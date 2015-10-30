@@ -96,3 +96,22 @@ func init() {
 func SayHello() {
 	fmt.Printf("exist root '%s' ok\n", rootDirPath)
 }
+
+type Exister struct{ Persist PersistFunc }
+
+/*
+func (self *Exister) Persist(data interface{}, oid uint) (uint, error) {
+	fmt.Printf("%T persist (oid %v): %v\n", data, oid, data)
+	return oid, nil
+}
+*/
+
+type PersistFunc func(interface{}, uint) (uint, error)
+
+func (self *Exister) MakePersist(data interface{}, store string) PersistFunc {
+	fmt.Printf("MakePersist(%T, %v)\n", data, store)
+	return func(data interface{}, oid uint) (uint, error) {
+		fmt.Printf("%T persist (%v %v): %v\n", data, store, oid, data)
+		return oid, nil
+	}
+}
