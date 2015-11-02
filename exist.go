@@ -5,6 +5,9 @@ import "os"
 import "path"
 import "log"
 import "io"
+import "reflect"
+import "errors"
+import "unsafe"
 
 var rootDirPath string
 
@@ -97,21 +100,44 @@ func SayHello() {
 	fmt.Printf("exist root '%s' ok\n", rootDirPath)
 }
 
-type Exister struct{ Persist PersistFunc }
+type Exist struct {
+	addr unsafe.Pointer
+	typ  reflect.Type
+	home string
+}
 
-/*
-func (self *Exister) Persist(data interface{}, oid uint) (uint, error) {
-	fmt.Printf("%T persist (oid %v): %v\n", data, oid, data)
+type Exister interface {
+	Persister
+	Recoverer
+}
+
+type Persister interface {
+	Persist(oid uint) (uint, error)
+}
+
+type Recoverer interface {
+	Recover(oid uint) error
+}
+
+func (self Exist) Persist(oid uint) (uint, error) {
+	v := reflect.NewAt(self.typ, self.addr)
+	data := v.Elem().Interface()
+	fmt.Printf("%s persist oid %v: %v\n", self.typ, oid, data)
 	return oid, nil
 }
-*/
 
-type PersistFunc func(interface{}, uint) (uint, error)
+func (self Exist) Recover(oid uint) error {
+	fmt.Printf("%v recover oid %v\n", self, oid)
+	return nil
+}
 
-func (self *Exister) MakePersist(data interface{}, store string) PersistFunc {
-	fmt.Printf("MakePersist(%T, %v)\n", data, store)
-	return func(data interface{}, oid uint) (uint, error) {
-		fmt.Printf("%T persist (%v %v): %v\n", data, store, oid, data)
-		return oid, nil
+func MakeExister(data interface{}, home string) (Exister, error) {
+	v := reflect.ValueOf(data)
+	if v.Kind() != reflect.Ptr {
+		return Exist{}, errors.New("MakeExister: data is not a pointer")
 	}
+	v = v.Elem()
+	p := unsafe.Pointer(v.UnsafeAddr())
+	t := v.Type()
+	return Exist{home: home, addr: p, typ: t}, nil
 }
