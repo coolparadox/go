@@ -1,4 +1,4 @@
-package exist
+package keep
 
 import "fmt"
 import "os"
@@ -41,13 +41,13 @@ func doesFileExist(name string) (bool, error) {
 
 func init() {
 
-	// Make sure exist root path is sane
+	// Make sure keep root path is sane
 	var ok bool
-	rootDirPath, ok = os.LookupEnv("EXISTROOT")
+	rootDirPath, ok = os.LookupEnv("KEEPROOT")
 	if !ok {
-		panic("undefined EXISTROOT environment variable")
+		panic("undefined KEEPROOT environment variable")
 	}
-	log.Printf("EXISTROOT is '%s'", rootDirPath)
+	log.Printf("KEEPROOT is '%s'", rootDirPath)
 	if !path.IsAbs(rootDirPath) {
 		panic(fmt.Sprintf("root dir '%s' is not an absolute path", rootDirPath))
 	}
@@ -62,7 +62,7 @@ func init() {
 	if finfo.Mode().Perm()&0022 != 0 {
 		panic(fmt.Sprintf("root dir '%s' is group or world writable", rootDirPath))
 	}
-	rootFilePath := path.Join(rootDirPath, ".existRoot")
+	rootFilePath := path.Join(rootDirPath, ".keepRoot")
 	rootFileExists, err := doesFileExist(rootFilePath)
 	if err != nil {
 		panic(fmt.Sprintf("cannot check for '%s' existence: %s", rootFilePath, err))
@@ -72,11 +72,11 @@ func init() {
 		panic(fmt.Sprintf("cannot check if root dir '%s' is empty: %s", rootDirPath, err))
 	}
 	if !rootFileExists && !rootDirEmpty {
-		panic(fmt.Sprintf("root dir '%s' is not empty and is not a exist database", rootDirPath))
+		panic(fmt.Sprintf("root dir '%s' is not empty and is not a keep database", rootDirPath))
 	}
 	for dir := path.Dir(rootDirPath); ; dir = path.Dir(dir) {
-		if ok, _ = doesFileExist(path.Join(dir, ".existRoot")); ok {
-			panic(fmt.Sprintf("exist database detected in '%s' above root dir '%s'", dir, rootDirPath))
+		if ok, _ = doesFileExist(path.Join(dir, ".keepRoot")); ok {
+			panic(fmt.Sprintf("keep database detected in '%s' above root dir '%s'", dir, rootDirPath))
 		}
 		if dir == "/" {
 			break
@@ -91,40 +91,42 @@ func init() {
 		if err != nil {
 			panic(fmt.Sprintf("cannot chmod root file '%s': %s", rootFilePath, err))
 		}
-		log.Printf("exist database initialized in '%s'", rootDirPath)
+		log.Printf("keep database initialized in '%s'", rootDirPath)
 	}
 
 }
 
 func SayHello() {
-	fmt.Printf("exist root '%s' ok\n", rootDirPath)
+	fmt.Printf("keep root '%s' ok\n", rootDirPath)
 }
 
-type Exist struct {
+type Keep struct {
 	addr unsafe.Pointer
 	typ  reflect.Type
 	home string
 }
 
-func (self Exist) Persist(oid uint) (uint, error) {
+func (self Keep) Save(oid uint) (uint, error) {
 	v := reflect.NewAt(self.typ, self.addr)
 	data := v.Elem().Interface()
-	fmt.Printf("%s persist oid %v in %v: %v\n", self.typ, oid, self.home, data)
+	fmt.Printf("%s save oid %v in %v: %v\n", self.typ, oid, self.home, data)
 	return oid, nil
 }
 
-func (self Exist) Recover(oid uint) error {
-	fmt.Printf("%v recover oid %v\n", self, oid)
+func (self Keep) Load(oid uint) error {
+	v := reflect.NewAt(self.typ, self.addr)
+	data := v.Elem().Interface()
+	fmt.Printf("%s load oid %v in %v: %v\n", self.typ, oid, self.home, data)
 	return nil
 }
 
-func New(storePtr interface{}, home string) (Exist, error) {
-	v := reflect.ValueOf(storePtr)
+func New(storage interface{}, home string) (Keep, error) {
+	v := reflect.ValueOf(storage)
 	if v.Kind() != reflect.Ptr {
-		return Exist{}, errors.New("exist.New(): storePtr parameter is not a pointer")
+		return Keep{}, errors.New("keep.New(): storage parameter is not a pointer")
 	}
 	v = v.Elem()
 	p := unsafe.Pointer(v.UnsafeAddr())
 	t := v.Type()
-	return Exist{home: home, addr: p, typ: t}, nil
+	return Keep{home: home, addr: p, typ: t}, nil
 }
