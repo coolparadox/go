@@ -106,23 +106,10 @@ type Exist struct {
 	home string
 }
 
-type Exister interface {
-	Persister
-	Recoverer
-}
-
-type Persister interface {
-	Persist(oid uint) (uint, error)
-}
-
-type Recoverer interface {
-	Recover(oid uint) error
-}
-
 func (self Exist) Persist(oid uint) (uint, error) {
 	v := reflect.NewAt(self.typ, self.addr)
 	data := v.Elem().Interface()
-	fmt.Printf("%s persist oid %v: %v\n", self.typ, oid, data)
+	fmt.Printf("%s persist oid %v in %v: %v\n", self.typ, oid, self.home, data)
 	return oid, nil
 }
 
@@ -131,10 +118,10 @@ func (self Exist) Recover(oid uint) error {
 	return nil
 }
 
-func MakeExister(data interface{}, home string) (Exister, error) {
-	v := reflect.ValueOf(data)
+func New(storePtr interface{}, home string) (Exist, error) {
+	v := reflect.ValueOf(storePtr)
 	if v.Kind() != reflect.Ptr {
-		return Exist{}, errors.New("MakeExister: data is not a pointer")
+		return Exist{}, errors.New("exist.New(): storePtr parameter is not a pointer")
 	}
 	v = v.Elem()
 	p := unsafe.Pointer(v.UnsafeAddr())
