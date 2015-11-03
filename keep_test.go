@@ -1,3 +1,19 @@
+// Copyright 2015 Rafael Lorandi.
+// This file is part of Keep, a persistency library for the Go language.
+// 
+// Keep is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+// 
+// Keep is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+// 
+// You should have received a copy of the GNU General Public License
+// along with Keep.  If not, see <http://www.gnu.org/licenses/>.
+
 package keep_test
 
 import "github.com/coolparadox/keep"
@@ -12,22 +28,24 @@ type MyData struct {
 	x, y int
 }
 
-func TestSave(t *testing.T) {
+func TestSaveLoad(t *testing.T) {
 	var my1 MyData
-	myKeep, err := keep.New(&my1, "/tmp/keep/my_data")
+	my1k, err := keep.New(&my1, "/tmp/keep/my_data")
 	if err != nil {
 		panic(err)
 	}
 	my1 = MyData{x: 22, y: 88}
-	my1_copy := my1
-	myKeep.Save(1)
+	my2 := my1
+	my1k.Save(1)
 	my1 = MyData{}
-	myKeep.Load(1)
-	if my1 != my1_copy { t.FailNow() }
+	my1k.Load(1)
+	if my1 != my2 {
+		t.FailNow()
+	}
 
-	//myKeep.Load(12)
-	//myKeep.Erase(12)
-	//var keeps bool = myKeep.Exists(23)
+	//my1k.Load(12)
+	//my1k.Erase(12)
+	//var keeps bool = my1k.Exists(23)
 
 	//var myList []uint = keep.List("/tmp/keep/my_data")
 	//keep.Wipe("/tmp/keep/my_data")
