@@ -1,4 +1,4 @@
-// Copyright 2015 Rafael Lorandi.
+// Copyright 2015 Rafael Lorandi <coolparadox@gmail.com>
 // This file is part of Keep, a persistency library for the Go language.
 // 
 // Keep is free software: you can redistribute it and/or modify

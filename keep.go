@@ -1,23 +1,23 @@
-// Copyright 2015 Rafael Lorandi.
+// Copyright 2015 Rafael Lorandi <coolparadox@gmail.com>
 // This file is part of Keep, a persistency library for the Go language.
-// 
+//
 // Keep is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Keep is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Keep.  If not, see <http://www.gnu.org/licenses/>.
 
 /*
-Package keep offers filesystem persistence for "concrete data" types.
-It works with types based on numeric, bool or string types, and also
-with any composition of these types by arrays, slices, maps and structs.
+Package keep offers filesystem persistence for types in Go.
+It works with numeric, bool or string based types, or any composition of these
+types by arrays, slices, maps and structs.
 
 Basics
 
@@ -25,7 +25,7 @@ On initialization, package keep looks for environment variable KEEPROOT that
 must be an absolute path to a directory in the filesystem for storing persisted
 data.
 
-In your code, let's say you have a variable of type MyType containing data you 
+Let's say you have a variable of type MyType containing data you
 want to persist. Create a Keep value for this purpose:
 
 	var myData MyType
@@ -47,19 +47,41 @@ storing/retrieving values to/from the collection:
 
 Requirements
 
-* KEEPROOT...
-persisted types
+On initialization, environment variable KEEPROOT must contain an absolute
+path to a directory in the filesystem for storing persisted data.
+If it's the first time this directory is used by package keep, the directory must be empty.
+Some sanity checkings are performed on the path pointed by KEEPROOT, and a
+panic is issued if any of these fails.
 
-Concurreny Issues
-Platform independency
+For a type to be accepted for persistence, it must be based on (or composed of)
+numeric types, bool, string, array, slice, map or struct.
+Types that contain channels, functions, interfaces or pointers cannot be persisted.
 
-...
+Issues
 
-Todo
+A persisted slice loses its original allocation of underlying array; on recovery,
+a new array with same length of the slice is created so the slice can reference it.
+Consequently, the capacity of a recovered slice equals its length.
 
-replace encoding/binary
-add collection keys
-document filesystem issues
+Platform independency of filesystem persisted data is not a design goal of package
+keep. If so happens at any stage of implementation, it's purely incidental
+and can't be assumed to remain.
+
+Bugs
+
+Concurrent access to a collection is not yet tought of, and can be a
+fruitful source of all kinds of weirdness.
+
+Wish List
+
+Document filesystem guidelines for better performance with package keep.
+
+Investigate a possibly faster implementation than encoding/binary for
+(un)marshaling persisted values.
+
+Protect against concurrent access to a collection.
+
+Implement a key mechanism for sorting items.
 
 */
 package keep
@@ -165,27 +187,25 @@ func SayHello() {
 	fmt.Printf("keep root '%s' ok\n", rootDirPath)
 }
 
-// Keep handles a collection of persisted values of a user type.
+// Keep handles a collection of persisted values of a type.
 type Keep struct {
-	addr unsafe.Pointer
-	typ  reflect.Type
-	home string
+	addr       unsafe.Pointer
+	typ        reflect.Type
+	collection string
 }
 
 // New creates a Keep value that manages a collection of persisted values of a
-// user type.
-// 
-// The access parameter must be a pointer to any user variable which type agrees
-// with persistency requirements (see ...).
-// The type of values persisted in the collection is taken from the type of the
-// variable pointed by access (ie, type of *access). Moreover, *access becomes the
-// user entry point of values to be persisted and recovered, see Save and Load
-// methods.
-// 
-// The home parameter is a relative directory path that, prefixed by the value of
-// KEEPROOT environment variable, forms the location of the collection in the
-// filesystem.
-func New(access interface{}, home string) (Keep, error) {
+// type.
+//
+// The access parameter must be a pointer to a variable with type that can
+// be persisted (see Requirements).
+// The variable referenced by access (ie, *access) serves as an access point
+// of values to be persisted and recovered (see Save and Load).
+//
+// The collection parameter is a relative directory path that, prefixed by the value of
+// KEEPROOT environment variable at the moment of initialization, forms the location
+// of the collection in the filesystem.
+func New(access interface{}, collection string) (Keep, error) {
 	v := reflect.ValueOf(access)
 	if v.Kind() != reflect.Ptr {
 		return Keep{}, errors.New("keep.New(): access parameter is not a pointer")
@@ -193,27 +213,31 @@ func New(access interface{}, home string) (Keep, error) {
 	v = v.Elem()
 	p := unsafe.Pointer(v.UnsafeAddr())
 	t := v.Type()
-	return Keep{home: home, addr: p, typ: t}, nil
+	return Keep{collection: collection, addr: p, typ: t}, nil
 }
 
 // Save creates or updates an item in the collection.
+//
 // The item to be created or updated is identified by a non zero id parameter.
 // The value to be persisted is taken from the access variable (see New).
+//
 // If id is zero, a new sequential id is chosen for the item.
+//
 // Returns the id of the item created or updated.
 func (k Keep) Save(id uint) (uint, error) {
 	v := reflect.NewAt(k.typ, k.addr)
 	data := v.Elem().Interface()
-	fmt.Printf("%s save id %v in %v: %v\n", k.typ, id, k.home, data)
+	fmt.Printf("%s save id %v in %v: %v\n", k.typ, id, k.collection, data)
 	return 0, errors.New("not yet implemented")
 }
 
 // Load retrieves the value of a persisted item in the collection.
+//
 // The retrieved value is stored in the access variable (see New).
 func (k Keep) Load(id uint) error {
 	v := reflect.NewAt(k.typ, k.addr)
 	data := v.Elem().Interface()
-	fmt.Printf("%s load id %v in %v: %v\n", k.typ, id, k.home, data)
+	fmt.Printf("%s load id %v in %v: %v\n", k.typ, id, k.collection, data)
 	return errors.New("not yet implemented")
 }
 
@@ -227,8 +251,7 @@ func (k Keep) Exists(id uint) (bool, error) {
 	return false, errors.New("not yet implemented")
 }
 
-// Wipe removes a collection from the filesystem, allowing the same home to be
-// reused for persistency of another type.
-func Wipe(home string) error {
+// Wipe removes a collection from the filesystem.
+func Wipe(collection string) error {
 	return errors.New("not yet implemented")
 }
