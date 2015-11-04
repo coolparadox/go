@@ -1,16 +1,16 @@
 // Copyright 2015 Rafael Lorandi <coolparadox@gmail.com>
 // This file is part of Keep, a persistency library for the Go language.
-// 
+//
 // Keep is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Keep is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Keep.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -29,6 +29,21 @@ type MyData struct {
 }
 
 func TestSaveLoad(t *testing.T) {
+
+	var err error
+
+	var data1 struct {
+		keep.Keep
+		MyData
+	}
+	data1.Keep, err = keep.New(&data1.MyData, "here1")
+	if err != nil {
+		panic(err)
+	}
+	data1.MyData = MyData{x: 39}
+	data1.y = 101
+	data1.Save(3)
+
 	var my1 MyData
 	my1k, err := keep.New(&my1, "/tmp/keep/my_data")
 	if err != nil {
