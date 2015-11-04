@@ -30,19 +30,23 @@ type MyData struct {
 
 func TestSaveLoad(t *testing.T) {
 
-	var err error
-
 	var data1 struct {
 		keep.Keep
 		MyData
 	}
-	data1.Keep, err = keep.New(&data1.MyData, "here1")
-	if err != nil {
-		panic(err)
-	}
+	data1.Keep = keep.NewOrPanic(&data1.MyData, "here1")
 	data1.MyData = MyData{x: 39}
 	data1.y = 101
 	data1.Save(3)
+
+	var data2 struct {
+		keep.Keep
+		MyData
+	}
+	data2.Keep = keep.NewOrPanic(&data2.MyData, "here2")
+	data2.MyData = MyData{x: 40}
+	data2.y = 102
+	data2.Save(4)
 
 	var my1 MyData
 	my1k, err := keep.New(&my1, "/tmp/keep/my_data")

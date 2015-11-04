@@ -216,6 +216,15 @@ func New(access interface{}, collection string) (Keep, error) {
 	return Keep{collection: collection, addr: p, typ: t}, nil
 }
 
+// NewOrPanic is a wrapper around New that panics if a Keep value cannot be created.
+func NewOrPanic(access interface{}, collection string) Keep {
+	k, err := New(access, collection)
+	if err != nil {
+		panic(err)
+	}
+	return k
+}
+
 // Save creates or updates an item in the collection.
 //
 // The item to be created or updated is identified by a non zero id parameter.
