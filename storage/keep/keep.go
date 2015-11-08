@@ -128,16 +128,18 @@ type marshalFn func(unsafe.Pointer) []byte
 // newMarshal builds a marshal function dedicated to a specific type.
 func newMarshal(t reflect.Type) (marshalFn, error) {
 	return func(p unsafe.Pointer) []byte {
-		v := reflect.NewAt(t, p).Elem()
-		d := v.Interface()
 		buf := new(bytes.Buffer)
-		err := binary.Write(buf, binary.LittleEndian, d)
+		err := binary.Write(buf, binary.LittleEndian, reflect.NewAt(t, p).Elem().Interface())
 		if err != nil {
 			panic(fmt.Sprintf("cannot marshal %s: %s", t, err))
 		}
 		return buf.Bytes()
 	}, nil
 }
+
+// keeplabel is the name of the "real" keep database under the location provided
+// by the user to New.
+var keepLabel string = ".keep"
 
 // New creates a Keep value that manages a collection of persisted values of a
 // type.
@@ -162,7 +164,7 @@ func New(access interface{}, path string) (Keep, error) {
 	if !finfo.IsDir() {
 		return Keep{}, errors.New(fmt.Sprintf("path '%s' is not a directory", path))
 	}
-	keepDir := pth.Join(path, ".keep")
+	keepDir := pth.Join(path, keepLabel)
 	keepDirExists := true
 	finfo, err = os.Stat(keepDir)
 	if err != nil {
@@ -175,6 +177,15 @@ func New(access interface{}, path string) (Keep, error) {
 	if keepDirExists {
 		if !finfo.IsDir() {
 			return Keep{}, errors.New(fmt.Sprintf("keep db dir '%s' is not a directory", keepDir))
+		}
+		keepFile := pth.Join(keepDir, keepLabel)
+		_, err := os.Stat(keepFile)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return Keep{}, errors.New(fmt.Sprintf("keep db mark file '%s' does not exist", keepFile))
+			} else {
+				return Keep{}, errors.New(fmt.Sprintf("cannot check for keep db mark file '%s' existence: %s", keepFile, err))
+			}
 		}
 	} else {
 		dir, err := os.Open(path)
@@ -189,6 +200,15 @@ func New(access interface{}, path string) (Keep, error) {
 		err = os.Mkdir(keepDir, 0755)
 		if err != nil {
 			return Keep{}, errors.New(fmt.Sprintf("cannot create keep db dir '%s'", keepDir))
+		}
+		keepFile := pth.Join(keepDir, keepLabel)
+		_, err = os.Create(keepFile)
+		if err != nil {
+			return Keep{}, errors.New(fmt.Sprintf("cannot create keep db mark file '%s'", keepFile))
+		}
+		err = os.Chmod(keepFile, 0644)
+		if err != nil {
+			return Keep{}, errors.New(fmt.Sprintf("cannot chmod keep db mark file '%s'", keepFile))
 		}
 		log.Printf("keep database initialized in '%s'", path)
 	}
