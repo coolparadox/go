@@ -12,61 +12,46 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Keep.  If not, see <http://www.gnu.org/licenses/>.
+// along with Keep. If not, see <http://www.gnu.org/licenses/>.
 
 package keep_test
 
-import "github.com/coolparadox/keep"
+import "github.com/coolparadox/go/storage/keep"
 import "testing"
+import "fmt"
+import "os"
 
-func ExampleSayHello() {
-	keep.SayHello()
-	// Output: keep root '/tmp/keep' ok
-}
-
-type MyData struct {
+type MyType struct {
 	x, y int
 }
 
+var sample MyType = MyType{x: 55, y: 101}
+
 func TestSaveLoad(t *testing.T) {
 
-	var data1 struct {
-		keep.Keep
-		MyData
-	}
-	data1.Keep = keep.NewOrPanic(&data1.MyData, "here1")
-	data1.MyData = MyData{x: 39}
-	data1.y = 101
-	data1.Save(3)
-
-	var data2 struct {
-		keep.Keep
-		MyData
-	}
-	data2.Keep = keep.NewOrPanic(&data2.MyData, "here2")
-	data2.MyData = MyData{x: 40}
-	data2.y = 102
-	data2.Save(4)
-
-	var my1 MyData
-	my1k, err := keep.New(&my1, "/tmp/keep/my_data")
+	var err error
+	myPath := "/tmp/my_data"
+	err = os.MkdirAll(myPath, 0755)
 	if err != nil {
-		panic(err)
+		t.Fatal(fmt.Sprintf("cannot create directory '%s': %s", myPath, err))
 	}
-	my1 = MyData{x: 22, y: 88}
-	my2 := my1
-	my1k.Save(1)
-	my1 = MyData{}
-	my1k.Load(1)
-	if my1 != my2 {
-		t.FailNow()
+	var myData struct {
+		MyType
+		keep.Keep
 	}
-
-	//my1k.Load(12)
-	//my1k.Erase(12)
-	//var keeps bool = my1k.Exists(23)
-
-	//var myList []uint = keep.List("/tmp/keep/my_data")
-	//keep.Wipe("/tmp/keep/my_data")
+	myData.Keep = keep.NewOrPanic(&myData.MyType, myPath)
+	myData.MyType = sample
+	id, err := myData.Save(0)
+	if err != nil {
+		t.Fatal(fmt.Sprintf("Save failed: %s", err))
+	}
+	myData.MyType = MyType{}
+	err = myData.Load(id)
+	if err != nil {
+		t.Fatal(fmt.Sprintf("Load failed: %s", err))
+	}
+	if myData.MyType != sample {
+		t.Fatal("Save / Load value mismatch: saved %v loaded %v", sample, myData.MyType)
+	}
 
 }
