@@ -22,7 +22,7 @@ import "fmt"
 import "os"
 
 type MyType struct {
-	x, y int
+	x, y uint32
 }
 
 var sample MyType = MyType{x: 55, y: 101}

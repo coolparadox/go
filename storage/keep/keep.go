@@ -111,6 +111,8 @@ import "io"
 import "reflect"
 import "errors"
 import "unsafe"
+import "bytes"
+import "encoding/binary"
 
 // Keep handles a collection of persisted values of a type.
 type Keep struct {
@@ -126,8 +128,15 @@ type marshalFn func(unsafe.Pointer) []byte
 // newMarshal builds a marshal function dedicated to a specific type.
 func newMarshal(t reflect.Type) (marshalFn, error) {
 	return func(p unsafe.Pointer) []byte {
-		return make([]byte, 10, 10)
-	}, errors.New("not yet implemented")
+		v := reflect.NewAt(t, p).Elem()
+		d := v.Interface()
+		buf := new(bytes.Buffer)
+		err := binary.Write(buf, binary.LittleEndian, d)
+		if err != nil {
+			panic(fmt.Sprintf("cannot marshal %s: %s", t, err))
+		}
+		return buf.Bytes()
+	}, nil
 }
 
 // New creates a Keep value that manages a collection of persisted values of a
@@ -192,7 +201,7 @@ func New(access interface{}, path string) (Keep, error) {
 	t := v.Type()
 	marshal, err := newMarshal(t)
 	if err != nil {
-		return Keep{}, errors.New(fmt.Sprintf("cannot marshal type %s: %s", t, err))
+		return Keep{}, errors.New(fmt.Sprintf("cannot build marshal function for type %s: %s", t, err))
 	}
 	return Keep{
 		path:    keepDir,
@@ -222,7 +231,7 @@ func NewOrPanic(access interface{}, path string) Keep {
 func (k Keep) Save(id uint) (uint, error) {
 	v := reflect.NewAt(k.typ, k.access)
 	data := v.Elem().Interface()
-	fmt.Printf("%s save id %v in %v: %v\n", k.typ, id, k.path, data)
+	fmt.Printf("%s save id %v in %v: %v -> % x\n", k.typ, id, k.path, data, k.marshal(k.access))
 	return 0, errors.New("not yet implemented")
 }
 
