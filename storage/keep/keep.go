@@ -114,9 +114,20 @@ import "unsafe"
 
 // Keep handles a collection of persisted values of a type.
 type Keep struct {
-	addr unsafe.Pointer
-	typ  reflect.Type
-	path string
+	access  unsafe.Pointer
+	typ     reflect.Type
+	path    string
+	marshal marshalFn
+}
+
+// marshalFn converts the referenced value to a serial representation.
+type marshalFn func(unsafe.Pointer) []byte
+
+// newMarshal builds a marshal function dedicated to a specific type.
+func newMarshal(t reflect.Type) (marshalFn, error) {
+	return func(p unsafe.Pointer) []byte {
+		return make([]byte, 10, 10)
+	}, errors.New("not yet implemented")
 }
 
 // New creates a Keep value that manages a collection of persisted values of a
@@ -179,7 +190,16 @@ func New(access interface{}, path string) (Keep, error) {
 	v = v.Elem()
 	p := unsafe.Pointer(v.UnsafeAddr())
 	t := v.Type()
-	return Keep{path: keepDir, addr: p, typ: t}, nil
+	marshal, err := newMarshal(t)
+	if err != nil {
+		return Keep{}, errors.New(fmt.Sprintf("cannot marshal type %s: %s", t, err))
+	}
+	return Keep{
+		path:    keepDir,
+		access:  p,
+		typ:     t,
+		marshal: marshal,
+	}, nil
 }
 
 // NewOrPanic is a wrapper around New that panics on error.
@@ -200,7 +220,7 @@ func NewOrPanic(access interface{}, path string) Keep {
 //
 // Returns the id of the item created or updated.
 func (k Keep) Save(id uint) (uint, error) {
-	v := reflect.NewAt(k.typ, k.addr)
+	v := reflect.NewAt(k.typ, k.access)
 	data := v.Elem().Interface()
 	fmt.Printf("%s save id %v in %v: %v\n", k.typ, id, k.path, data)
 	return 0, errors.New("not yet implemented")
@@ -210,7 +230,7 @@ func (k Keep) Save(id uint) (uint, error) {
 //
 // The retrieved value is stored in the access variable (see New).
 func (k Keep) Load(id uint) error {
-	v := reflect.NewAt(k.typ, k.addr)
+	v := reflect.NewAt(k.typ, k.access)
 	data := v.Elem().Interface()
 	fmt.Printf("%s load id %v in %v: %v\n", k.typ, id, k.path, data)
 	return errors.New("not yet implemented")
