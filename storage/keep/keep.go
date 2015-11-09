@@ -249,10 +249,13 @@ func NewOrPanic(access interface{}, path string) Keep {
 //
 // Returns the id of the item created or updated.
 func (k Keep) Save(id uint) (uint, error) {
+	if id == 0 {
+		return 0, errors.New("automatic id selection not yet implemented")
+	}
 	v := reflect.NewAt(k.typ, k.access)
 	data := v.Elem().Interface()
 	fmt.Printf("%s save id %v in %v: %v -> % x\n", k.typ, id, k.path, data, k.marshal(k.access))
-	return 0, errors.New("not yet implemented")
+	return 0, errors.New("save not yet implemented")
 }
 
 // Load retrieves the value of a persisted item in the collection.

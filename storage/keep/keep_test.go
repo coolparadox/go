@@ -41,7 +41,7 @@ func TestSaveLoad(t *testing.T) {
 	}
 	myData.Keep = keep.NewOrPanic(&myData.MyType, myPath)
 	myData.MyType = sample
-	id, err := myData.Save(0)
+	id, err := myData.Save(1)
 	if err != nil {
 		t.Fatal(fmt.Sprintf("Save failed: %s", err))
 	}
