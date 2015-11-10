@@ -115,6 +115,7 @@ import "bytes"
 import "encoding/binary"
 import "strconv"
 import "strings"
+import "io/ioutil"
 
 // Keep handles a collection of persisted values of a type.
 type Keep struct {
@@ -251,13 +252,24 @@ func NewOrPanic(access interface{}, path string) Keep {
 //
 // Returns the id of the item created or updated.
 func (k Keep) Save(id uint64) (uint64, error) {
+	var err error
 	if id == 0 {
 		return 0, errors.New("automatic id selection not yet implemented")
 	}
 	v := reflect.NewAt(k.typ, k.access)
 	data := v.Elem().Interface()
 	fmt.Printf("%s save id %v in %v: %v -> % x\n", k.typ, id, k.path, data, k.marshal(k.access))
-	return 0, errors.New("save not yet implemented")
+	targetPath := pth.Join(k.path, formatPath(id))
+	targetDir := pth.Dir(targetPath)
+	err = os.MkdirAll(targetDir, 0755)
+	if err != nil {
+		return 0, errors.New(fmt.Sprintf("cannot create directory '%s': %s", targetDir, err))
+	}
+	err = ioutil.WriteFile(targetPath, k.marshal(k.access), 0644)
+	if err != nil {
+		return 0, errors.New(fmt.Sprintf("cannot write file '%s': %s", targetPath, err))
+	}
+	return id, nil
 }
 
 // Load retrieves the value of a persisted item in the collection.
@@ -286,17 +298,28 @@ func Wipe(path string) error {
 }
 
 // formatPath converts an id to a relative filesystem path.
-func FormatPath(id uint64) string {
-	var s string
-	s = fmt.Sprintf("%013s", strconv.FormatUint(uint64(id), 36))
-	s = strings.Join(strings.Split(s, ""), string(os.PathSeparator))
-	return s
+func formatPath(id uint64) string {
+	return strings.Join(
+		strings.Split(
+			fmt.Sprintf(
+				"%013s",
+				strconv.FormatUint(
+					uint64(id),
+					36)),
+			""),
+		string(os.PathSeparator))
 }
 
 // parsePath converts a relative filesystem path to an id.
-func ParsePath(path string) (uint64, error) {
-	s := strings.Join(strings.Split(path, string(os.PathSeparator)), "")
-	id, err := strconv.ParseUint(s, 36, 64)
+func parsePath(path string) (uint64, error) {
+	id, err := strconv.ParseUint(
+		strings.Join(
+			strings.Split(
+				path,
+				string(os.PathSeparator)),
+			""),
+		36,
+		64)
 	if err != nil {
 		return 0, errors.New(fmt.Sprintf("cannot convert '%s' to id: %s", path, err))
 	}
