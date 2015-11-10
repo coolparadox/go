@@ -113,6 +113,8 @@ import "errors"
 import "unsafe"
 import "bytes"
 import "encoding/binary"
+import "strconv"
+import "strings"
 
 // Keep handles a collection of persisted values of a type.
 type Keep struct {
@@ -248,7 +250,7 @@ func NewOrPanic(access interface{}, path string) Keep {
 // If id is zero, a new sequential id is chosen for the item.
 //
 // Returns the id of the item created or updated.
-func (k Keep) Save(id uint) (uint, error) {
+func (k Keep) Save(id uint64) (uint64, error) {
 	if id == 0 {
 		return 0, errors.New("automatic id selection not yet implemented")
 	}
@@ -261,7 +263,7 @@ func (k Keep) Save(id uint) (uint, error) {
 // Load retrieves the value of a persisted item in the collection.
 //
 // The retrieved value is stored in the access variable (see New).
-func (k Keep) Load(id uint) error {
+func (k Keep) Load(id uint64) error {
 	v := reflect.NewAt(k.typ, k.access)
 	data := v.Elem().Interface()
 	fmt.Printf("%s load id %v in %v: %v\n", k.typ, id, k.path, data)
@@ -269,16 +271,34 @@ func (k Keep) Load(id uint) error {
 }
 
 // Erase erases an item from the collection.
-func (k Keep) Erase(id uint) error {
+func (k Keep) Erase(id uint64) error {
 	return errors.New("not yet implemented")
 }
 
 // Exists verifies if an item exists in the collection.
-func (k Keep) Exists(id uint) (bool, error) {
+func (k Keep) Exists(id uint64) (bool, error) {
 	return false, errors.New("not yet implemented")
 }
 
 // Wipe removes a collection from the filesystem.
 func Wipe(path string) error {
 	return errors.New("not yet implemented")
+}
+
+// formatPath converts an id to a relative filesystem path.
+func FormatPath(id uint64) string {
+	var s string
+	s = fmt.Sprintf("%013s", strconv.FormatUint(uint64(id), 36))
+	s = strings.Join(strings.Split(s, ""), string(os.PathSeparator))
+	return s
+}
+
+// parsePath converts a relative filesystem path to an id.
+func ParsePath(path string) (uint64, error) {
+	s := strings.Join(strings.Split(path, string(os.PathSeparator)), "")
+	id, err := strconv.ParseUint(s, 36, 64)
+	if err != nil {
+		return 0, errors.New(fmt.Sprintf("cannot convert '%s' to id: %s", path, err))
+	}
+	return id, nil
 }

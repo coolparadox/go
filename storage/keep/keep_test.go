@@ -20,6 +20,7 @@ import "github.com/coolparadox/go/storage/keep"
 import "testing"
 import "fmt"
 import "os"
+import "strconv"
 
 type MyType struct {
 	x, y uint32
@@ -28,6 +29,13 @@ type MyType struct {
 var sample MyType = MyType{x: 55, y: 101}
 
 func TestSaveLoad(t *testing.T) {
+
+	n := ^uint(0)
+	s := strconv.FormatUint(uint64(n), 36)
+	t.Logf("n = %v = %s", n, s)
+
+	m, _ := strconv.ParseUint(s, 36, 64)
+	t.Logf("m = %s = %v", s, m)
 
 	var err error
 	myPath := "/tmp/my_data"
@@ -54,4 +62,41 @@ func TestSaveLoad(t *testing.T) {
 		t.Fatal("Save / Load value mismatch: saved %v loaded %v", sample, myData.MyType)
 	}
 
+}
+
+func ExampleFormatPath() {
+	fmt.Println(keep.FormatPath(0))
+	fmt.Println(keep.FormatPath(1))
+	fmt.Println(keep.FormatPath(^uint64(0)))
+	// Output:
+	// 0/0/0/0/0/0/0/0/0/0/0/0/0
+	// 0/0/0/0/0/0/0/0/0/0/0/0/1
+	// 3/w/5/e/1/1/2/6/4/s/g/s/f
+}
+
+func ExampleParsePath() {
+	var id uint64
+	var err error
+	id, err = keep.ParsePath("0/0/0/0/0/0/0/0/0/0/0/0/0")
+	if err == nil {
+		fmt.Println(id)
+	} else {
+		fmt.Printf("%s\n", err)
+	}
+	id, err = keep.ParsePath("0/0/0/0/0/0/0/0/0/0/0/0/1")
+	if err == nil {
+		fmt.Println(id)
+	} else {
+		fmt.Printf("%s\n", err)
+	}
+	id, err = keep.ParsePath("3/w/5/e/1/1/2/6/4/s/g/s/f")
+	if err == nil {
+		fmt.Println(id)
+	} else {
+		fmt.Printf("%s\n", err)
+	}
+	// Output:
+	// 0
+	// 1
+	// 18446744073709551615
 }
