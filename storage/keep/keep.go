@@ -24,22 +24,22 @@ Basics
 Let's say you have a variable of some type containing data you
 want to persist. Create a Keep value for this purpose:
 
-	var myData MyType
-	myKeep, _ := keep.New(&myData, "/home/user/my_data")
+  var myData MyType
+  myKeep, _ := keep.New(&myData, "/home/user/my_data")
 
 In the above example, myKeep opens a collection of MyType values under
 directory /home/user/my_data in the filesystem, using myData as a buffer for
 transfer values to/from the collection:
 
-	myData = ...  // populate with data to be persisted
-	id := myKeep.Save(0)  // persist myData value to the collection as a new item
-	...
-	myKeep.Load(id)  // populate myData with a persisted value
-	...
-	myKeep.Erase(id)  // remove an item from the collection
-	...
-	myList := myKeep.List()  // get ids of all items in the collection
-	...
+  myData = ...  // populate with data to be persisted
+  id := myKeep.Save(0)  // persist myData value to the collection as a new item
+  ...
+  myKeep.Load(id)  // populate myData with a persisted value
+  ...
+  myKeep.Erase(id)  // remove an item from the collection
+  ...
+  myList := myKeep.List()  // get ids of all items in the collection
+  ...
 
 Requirements
 
@@ -55,24 +55,24 @@ Embedding Keep
 Type embedding in Go allows a composition of Keep with your type to feel as your
 type has just gained persistence methods:
 
-	var myData struct {
-		MyType
-		keep.Keep
-	}
-	myData.Keep = keep.NewOrPanic(&myData.MyData, "/home/user/my_data")
+  var myData struct {
+    MyType
+    keep.Keep
+  }
+  myData.Keep = keep.NewOrPanic(&myData.MyData, "/home/user/my_data")
 
-	// populate myData
-	myData.MyData = MyData{...}  // by composite literal
-	myData.<field> = ...  // by field (in case MyType is a struct)
+  // populate myData
+  myData.MyData = MyData{...}  // by composite literal
+  myData.<field> = ...  // by field (in case MyType is a struct)
 
-	id := myData.Save(0)  // persist as new item
-	...
-	myData.Load(id)  // retrieve a persisted value
-	...
-	myData.Erase(id)  // remove item from collection
-	...
-	myList := myData.List()  // get all persisted ids
-	...
+  id := myData.Save(0)  // persist as new item
+  ...
+  myData.Load(id)  // retrieve a persisted value
+  ...
+  myData.Erase(id)  // remove item from collection
+  ...
+  myList := myData.List()  // get all persisted ids
+  ...
 
 Issues
 
@@ -117,18 +117,13 @@ import "strconv"
 import "strings"
 import "io/ioutil"
 
-// Keep handles a collection of persisted values of a type.
-type Keep struct {
-	access  unsafe.Pointer
-	typ     reflect.Type
-	path    string
-	marshal marshalFn
-}
-
 // marshalFn converts the referenced value to a serial representation.
+// See newMarshal for creating a marshalFn.
 type marshalFn func(unsafe.Pointer) []byte
 
 // newMarshal builds a marshal function dedicated to a specific type.
+// The created marshalFn can safely assume its pointer parameter will always
+// point to a value of the same type passed to newMarshal.
 func newMarshal(t reflect.Type) (marshalFn, error) {
 	return func(p unsafe.Pointer) []byte {
 		buf := new(bytes.Buffer)
@@ -140,9 +135,35 @@ func newMarshal(t reflect.Type) (marshalFn, error) {
 	}, nil
 }
 
+// unmarshalFn fills a value with the convertion from a serial representation.
+// See newUnmarshal for creating a unmarshalFn.
+type unmarshalFn func([]byte, unsafe.Pointer)
+
+// newUnmarshal builds an unmarshal function dedicated to a specific type.
+// The created unmarshalFn can safely assume its pointer parameter will always
+// point to a value of the same type passed to newUnmarshal.
+func newUnmarshal(t reflect.Type) (unmarshalFn, error) {
+	return func(data []byte, p unsafe.Pointer) {
+		vp := reflect.NewAt(t, p).Interface()
+		err := binary.Read(bytes.NewReader(data), binary.LittleEndian, vp)
+		if err != nil {
+			panic(fmt.Sprintf("cannot unmarshal %s: %s", t, err))
+		}
+	}, nil
+}
+
 // keeplabel is the name of the "real" keep database under the location provided
 // by the user to New.
 var keepLabel string = ".keep"
+
+// Keep handles a collection of persisted values of a type.
+type Keep struct {
+	access    unsafe.Pointer
+	typ       reflect.Type
+	path      string
+	marshal   marshalFn
+	unmarshal unmarshalFn
+}
 
 // New creates a Keep value that manages a collection of persisted values of a
 // type.
@@ -223,11 +244,16 @@ func New(access interface{}, path string) (Keep, error) {
 	if err != nil {
 		return Keep{}, errors.New(fmt.Sprintf("cannot build marshal function for type %s: %s", t, err))
 	}
+	unmarshal, err := newUnmarshal(t)
+	if err != nil {
+		return Keep{}, errors.New(fmt.Sprintf("cannot build unmarshal function for type %s: %s", t, err))
+	}
 	return Keep{
-		path:    keepDir,
-		access:  p,
-		typ:     t,
-		marshal: marshal,
+		path:      keepDir,
+		access:    p,
+		typ:       t,
+		marshal:   marshal,
+		unmarshal: unmarshal,
 	}, nil
 }
 
@@ -253,9 +279,6 @@ func (k Keep) Save(id uint64) (uint64, error) {
 	if id == 0 {
 		return 0, errors.New("automatic id selection not yet implemented")
 	}
-	v := reflect.NewAt(k.typ, k.access)
-	data := v.Elem().Interface()
-	fmt.Printf("%s save id %v in %v: %v -> % x\n", k.typ, id, k.path, data, k.marshal(k.access))
 	targetPath := pth.Join(k.path, formatPath(id))
 	targetDir := pth.Dir(targetPath)
 	err = os.MkdirAll(targetDir, 0755)
@@ -273,10 +296,13 @@ func (k Keep) Save(id uint64) (uint64, error) {
 //
 // The retrieved value is stored in the access variable (see New).
 func (k Keep) Load(id uint64) error {
-	v := reflect.NewAt(k.typ, k.access)
-	data := v.Elem().Interface()
-	fmt.Printf("%s load id %v in %v: %v\n", k.typ, id, k.path, data)
-	return errors.New("not yet implemented")
+	sourcePath := pth.Join(k.path, formatPath(id))
+	buf, err := ioutil.ReadFile(sourcePath)
+	if err != nil {
+		return errors.New(fmt.Sprintf("cannot read file '%s': %s", sourcePath, err))
+	}
+	k.unmarshal(buf, k.access)
+	return nil
 }
 
 // Erase erases an item from the collection.

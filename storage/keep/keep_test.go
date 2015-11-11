@@ -18,14 +18,13 @@ package keep_test
 
 import "github.com/coolparadox/go/storage/keep"
 import "testing"
-import "fmt"
 import "os"
 
 type MyType struct {
-	x, y uint32
+	X, Y uint32
 }
 
-var sample MyType = MyType{x: 55, y: 101}
+var sample MyType = MyType{X: 55, Y: 101}
 
 func TestSaveLoad(t *testing.T) {
 
@@ -48,15 +47,15 @@ func TestSaveLoad(t *testing.T) {
 	myData.MyType = sample
 	id, err := myData.Save(1)
 	if err != nil {
-		t.Fatal(fmt.Sprintf("Save failed: %s", err))
+		t.Fatalf("Save failed: %s", err)
 	}
 	myData.MyType = MyType{}
 	err = myData.Load(id)
 	if err != nil {
-		t.Fatal(fmt.Sprintf("Load failed: %s", err))
+		t.Fatalf("Load failed: %s", err)
 	}
 	if myData.MyType != sample {
-		t.Fatal("Save / Load value mismatch: saved %v loaded %v", sample, myData.MyType)
+		t.Fatalf("Save / Load value mismatch: saved %v loaded %v", sample, myData.MyType)
 	}
 
 }
