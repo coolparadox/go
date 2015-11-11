@@ -33,7 +33,12 @@ func TestSaveLoad(t *testing.T) {
 	myPath := "/tmp/my_data"
 	err = os.MkdirAll(myPath, 0755)
 	if err != nil {
-		t.Fatal(fmt.Sprintf("cannot create directory '%s': %s", myPath, err))
+		t.Logf("cannot create directory '%s'; assuming Android", myPath)
+		myPath = "/storage/emulated/0/go/var/my_data"
+		err = os.MkdirAll(myPath, 0755)
+		if err != nil {
+			t.Fatalf("cannot create directory '%s': %s", myPath, err)
+		}
 	}
 	var myData struct {
 		MyType

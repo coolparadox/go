@@ -209,10 +209,7 @@ func New(access interface{}, path string) (Keep, error) {
 		if err != nil {
 			return Keep{}, errors.New(fmt.Sprintf("cannot create keep db mark file '%s'", keepFile))
 		}
-		err = os.Chmod(keepFile, 0644)
-		if err != nil {
-			return Keep{}, errors.New(fmt.Sprintf("cannot chmod keep db mark file '%s'", keepFile))
-		}
+		os.Chmod(keepFile, 0644)
 		log.Printf("keep database initialized in '%s'", path)
 	}
 	v := reflect.ValueOf(access)
