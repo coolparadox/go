@@ -27,9 +27,10 @@ import "time"
 const androidMyPath = "/storage/emulated/0/go/var/my_data"
 const otherMyPath = "/tmp/my_data"
 
-var myPath string
+var myPath string = otherMyPath
+var db concur.Concur
 
-func TestDatabasePath(t *testing.T) {
+func TestInit(t *testing.T) {
 	var err error
 	myPath = otherMyPath
 	err = os.MkdirAll(myPath, 0755)
@@ -42,21 +43,34 @@ func TestDatabasePath(t *testing.T) {
 		}
 	}
 	t.Logf("path to concur db is '%s'", myPath)
+	rand.Seed(time.Now().Unix())
 
 }
 
-func TestSaveLoad(t *testing.T) {
+func TestNewEmpty(t *testing.T) {
 
-	rand.Seed(time.Now().Unix())
+	var err error
+	err = os.RemoveAll(myPath)
+	if err != nil {
+		t.Fatalf("cannot remove directory '%s': %s", myPath, err)
+	}
+	err = os.MkdirAll(myPath, 0755)
+	if err != nil {
+		t.Fatalf("cannot create directory '%s': %s", myPath, err)
+	}
+	db, err = concur.New(myPath)
+	if err != nil {
+		t.Fatalf("concur.New failed: %s", err)
+	}
+
+}
+
+func TestSaveAs(t *testing.T) {
 	sample := make([]byte, 100)
 	for i, _ := range sample {
 		sample[i] = byte(rand.Intn(256))
 	}
 	var err error
-	db, err := concur.New(myPath)
-	if err != nil {
-		t.Fatalf("concur.New failed: %s", err)
-	}
 	err = db.SaveAs(sample, 0)
 	if err != nil {
 		t.Fatalf("concur.SaveAs failed: %s", err)
@@ -68,5 +82,40 @@ func TestSaveLoad(t *testing.T) {
 	if !bytes.Equal(loaded, sample) {
 		t.Fatalf("save & load mismatch: saved %v loaded %v", sample, loaded)
 	}
+}
 
+type savedItem struct {
+	id    uint64
+	value [1]byte
+}
+
+const howManySaves = 10000
+
+var savedData [howManySaves]savedItem
+
+func TestSaveMany(t *testing.T) {
+	for i := 0; i < howManySaves; i++ {
+		id := uint64(rand.Int63())
+		value := byte(rand.Int() % 256)
+		err := db.SaveAs([]byte{value}, id)
+		if err != nil {
+			t.Fatalf("concur.SaveAs failed: %s", err)
+		}
+		savedData[i].id = id
+		savedData[i].value[0] = value
+	}
+}
+
+func TestLoadMany(t *testing.T) {
+	for i := 0; i < howManySaves; i++ {
+		id := savedData[i].id
+		loaded, err := db.Load(id)
+		if err != nil {
+			t.Fatalf("concur.Load failed: %s", err)
+		}
+		saved := savedData[i].value
+		if loaded[0] != saved[0] {
+			t.Fatalf("save & load mismatch: saved %v loaded %v", saved, loaded)
+		}
+	}
 }
