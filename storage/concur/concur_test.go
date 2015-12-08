@@ -24,6 +24,27 @@ import "bytes"
 import "math/rand"
 import "time"
 
+const androidMyPath = "/storage/emulated/0/go/var/my_data"
+const otherMyPath = "/tmp/my_data"
+
+var myPath string
+
+func TestDatabasePath(t *testing.T) {
+	var err error
+	myPath = otherMyPath
+	err = os.MkdirAll(myPath, 0755)
+	if err != nil {
+		t.Logf("cannot create directory '%s'; assuming Android", myPath)
+		myPath = androidMyPath
+		err = os.MkdirAll(myPath, 0755)
+		if err != nil {
+			t.Fatalf("cannot create directory '%s': %s", myPath, err)
+		}
+	}
+	t.Logf("path to concur db is '%s'", myPath)
+
+}
+
 func TestSaveLoad(t *testing.T) {
 
 	rand.Seed(time.Now().Unix())
@@ -32,16 +53,6 @@ func TestSaveLoad(t *testing.T) {
 		sample[i] = byte(rand.Intn(256))
 	}
 	var err error
-	myPath := "/tmp/my_data"
-	err = os.MkdirAll(myPath, 0755)
-	if err != nil {
-		t.Logf("cannot create directory '%s'; assuming Android", myPath)
-		myPath = "/storage/emulated/0/go/var/my_data"
-		err = os.MkdirAll(myPath, 0755)
-		if err != nil {
-			t.Fatalf("cannot create directory '%s': %s", myPath, err)
-		}
-	}
 	db, err := concur.New(myPath)
 	if err != nil {
 		t.Fatalf("concur.New failed: %s", err)
