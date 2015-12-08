@@ -15,6 +15,48 @@
 // You should have received a copy of the GNU General Public License
 // along with Concur. If not, see <http://www.gnu.org/licenses/>.
 
+/*
+Package concur offers filesystem persistence for byte sequences in Go.
+
+Basics
+
+	myCollection, _ := concur.New("/path/to/my/collection");
+	...
+	myData := byte[]{0,1,2,3,4,5,6,7,8,9}
+	id := myCollection.Save(myData) // persist myData as a new item
+	...
+	myData2, _ := myCollection.Load(id) // access value of a persisted item
+	...
+	myCollection.Erase(id) // remove an item from the collection
+	...
+	myList := myCollection.List() // list ids of all items in the collection
+
+Requirements
+
+For safety, path to collections in New() must be absolute paths to directories
+already existent in the filesystem.
+
+Issues
+
+A persisted byte slice loses its original allocation of underlying array. On
+recovery, a new array with same lenght of the persisted slice is created for
+reference by the recovered value. Consequently, the capacity of a recovered
+slice equals to its length.
+
+Bugs
+
+Concurrent access to a collection is not yet thought of, and can be a
+fruitful source of weirdness.
+
+Wish List
+
+Document filesystem guidelines for better performance with package concur.
+
+Protect against concurrent access to collections.
+
+Do we need keys? (As in for sorting and fast lookup of data.)
+
+*/
 package concur
 
 import "path"

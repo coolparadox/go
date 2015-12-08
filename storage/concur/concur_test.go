@@ -27,7 +27,7 @@ import "time"
 func TestSaveLoad(t *testing.T) {
 
 	rand.Seed(time.Now().Unix())
-	sample := make([]byte, 100, 100)
+	sample := make([]byte, 100)
 	for i, _ := range sample {
 		sample[i] = byte(rand.Intn(256))
 	}
