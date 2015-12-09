@@ -181,7 +181,13 @@ func (c Concur) Erase(key uint32) error {
 	if !c.initialized {
 		return errors.New("unitialized concur.Concur")
 	}
-	return errors.New("not yet implemented")
+	var err error
+	targetPath := path.Join(c.dir, formatPath(key))
+	err = os.Remove(targetPath)
+	if err != nil {
+		return errors.New(fmt.Sprintf("cannot remove file '%s': %s", targetPath, err))
+	}
+	return nil
 }
 
 // Exists verifies if a key exists.

@@ -142,15 +142,33 @@ func TestLoadMany(t *testing.T) {
 	}
 }
 
-func TestExistsTrue(t *testing.T) {
+func TestErase(t *testing.T) {
+	limit := howManySaves / 10
+	for i := 0; i < limit; i++ {
+		id := savedData[i].id
+		err := db.Erase(id)
+		if err != nil {
+			t.Fatalf("concur.Erase failed: %s", err)
+		}
+	}
+}
+
+func TestExists(t *testing.T) {
+	limit := howManySaves / 10
 	for i := 0; i < howManySaves; i++ {
 		id := savedData[i].id
 		exists, err := db.Exists(id)
 		if err != nil {
 			t.Fatalf("concur.Exists failed: %s", err)
 		}
-		if !exists {
-			t.Fatalf("concur.Exists mismatch: %v", exists)
+		if i < limit {
+			if exists {
+				t.Fatalf("concur.Exists mismatch for id %v: %v", id, exists)
+			}
+		} else {
+			if !exists {
+				t.Fatalf("concur.Exists mismatch for id %v: %v", id, exists)
+			}
 		}
 	}
 }
