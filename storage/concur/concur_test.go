@@ -141,3 +141,16 @@ func TestLoadMany(t *testing.T) {
 		}
 	}
 }
+
+func TestExistsTrue(t *testing.T) {
+	for i := 0; i < howManySaves; i++ {
+		id := savedData[i].id
+		exists, err := db.Exists(id)
+		if err != nil {
+			t.Fatalf("concur.Exists failed: %s", err)
+		}
+		if !exists {
+			t.Fatalf("concur.Exists mismatch: %v", exists)
+		}
+	}
+}

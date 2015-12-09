@@ -189,7 +189,18 @@ func (c Concur) Exists(key uint32) (bool, error) {
 	if !c.initialized {
 		return false, errors.New("unitialized concur.Concur")
 	}
-	return false, errors.New("not yet implemented")
+	var err error
+	targetPath := path.Join(c.dir, formatPath(key))
+	targetPathExists := true
+	_, err = os.Stat(targetPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			targetPathExists = false
+		} else {
+			return false, errors.New(fmt.Sprintf("cannot check for '%s' existence: %s", targetPath, err))
+		}
+	}
+	return targetPathExists, nil
 }
 
 // Wipe removes a collection from the filesystem.
