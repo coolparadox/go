@@ -71,6 +71,7 @@ func TestSaveAs(t *testing.T) {
 		sample[i] = byte(rand.Intn(256))
 	}
 	var err error
+
 	err = db.SaveAs(sample, 0)
 	if err != nil {
 		t.Fatalf("concur.SaveAs failed: %s", err)
@@ -82,20 +83,33 @@ func TestSaveAs(t *testing.T) {
 	if !bytes.Equal(loaded, sample) {
 		t.Fatalf("save & load mismatch: saved %v loaded %v", sample, loaded)
 	}
+
+	err = db.SaveAs(sample, 4294967295)
+	if err != nil {
+		t.Fatalf("concur.SaveAs failed: %s", err)
+	}
+	loaded, err = db.Load(4294967295)
+	if err != nil {
+		t.Fatalf("concur.Load failed: %s", err)
+	}
+	if !bytes.Equal(loaded, sample) {
+		t.Fatalf("save & load mismatch: saved %v loaded %v", sample, loaded)
+	}
+
 }
 
 type savedItem struct {
-	id    uint64
+	id    uint32
 	value [1]byte
 }
 
-const howManySaves = 10000
+const howManySaves = 10
 
 var savedData [howManySaves]savedItem
 
 func TestSaveMany(t *testing.T) {
 	for i := 0; i < howManySaves; i++ {
-		id := uint64(rand.Int63())
+		id := uint32(rand.Int63())
 		value := byte(rand.Int() % 256)
 		err := db.SaveAs([]byte{value}, id)
 		if err != nil {

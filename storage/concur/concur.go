@@ -131,7 +131,7 @@ func New(dir string) (Concur, error) {
 }
 
 // SaveAs stores a byte sequence identified by an id.
-func (c Concur) SaveAs(data []byte, id uint64) error {
+func (c Concur) SaveAs(data []byte, id uint32) error {
 	var err error
 	targetPath := path.Join(c.dir, formatPath(id))
 	targetDir := path.Dir(targetPath)
@@ -147,7 +147,7 @@ func (c Concur) SaveAs(data []byte, id uint64) error {
 }
 
 // Load retrieves a previously saved byte sequence.
-func (c Concur) Load(id uint64) ([]byte, error) {
+func (c Concur) Load(id uint32) ([]byte, error) {
 	sourcePath := path.Join(c.dir, formatPath(id))
 	buf, err := ioutil.ReadFile(sourcePath)
 	if err != nil {
@@ -157,12 +157,12 @@ func (c Concur) Load(id uint64) ([]byte, error) {
 }
 
 // Erase erases an item from the collection.
-func (c Concur) Erase(id uint64) error {
+func (c Concur) Erase(id uint32) error {
 	return errors.New("not yet implemented")
 }
 
 // Exists verifies if an item exists in the collection.
-func (c Concur) Exists(id uint64) (bool, error) {
+func (c Concur) Exists(id uint32) (bool, error) {
 	return false, errors.New("not yet implemented")
 }
 
@@ -172,30 +172,14 @@ func Wipe(dir string) error {
 }
 
 // formatPath converts an id to a relative filesystem path.
-func formatPath(id uint64) string {
+func formatPath(id uint32) string {
 	return strings.Join(
 		strings.Split(
 			fmt.Sprintf(
-				"%013s",
+				"%07s",
 				strconv.FormatUint(
 					uint64(id),
 					36)),
 			""),
 		string(os.PathSeparator))
-}
-
-// parsePath converts a relative filesystem path to an id.
-func parsePath(path string) (uint64, error) {
-	id, err := strconv.ParseUint(
-		strings.Join(
-			strings.Split(
-				path,
-				string(os.PathSeparator)),
-			""),
-		36,
-		64)
-	if err != nil {
-		return 0, errors.New(fmt.Sprintf("cannot convert '%s' to id: %s", path, err))
-	}
-	return id, nil
 }
