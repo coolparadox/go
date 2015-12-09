@@ -24,8 +24,12 @@ import "bytes"
 import "math/rand"
 import "time"
 
-const androidMyPath = "/storage/emulated/0/go/var/my_data"
-const otherMyPath = "/tmp/my_data"
+const (
+	androidMyPath = "/storage/emulated/0/go/var/my_data"
+	otherMyPath   = "/tmp/my_data"
+)
+
+const howManySaves = 100000
 
 var myPath string = otherMyPath
 var db concur.Concur
@@ -72,25 +76,25 @@ func TestSaveAs(t *testing.T) {
 	}
 	var err error
 
-	err = db.SaveAs(sample, 0)
+	err = db.Put(0, sample)
 	if err != nil {
-		t.Fatalf("concur.SaveAs failed: %s", err)
+		t.Fatalf("concur.Put failed: %s", err)
 	}
-	loaded, err := db.Load(0)
+	loaded, err := db.Get(0)
 	if err != nil {
-		t.Fatalf("concur.Load failed: %s", err)
+		t.Fatalf("concur.Get failed: %s", err)
 	}
 	if !bytes.Equal(loaded, sample) {
 		t.Fatalf("save & load mismatch: saved %v loaded %v", sample, loaded)
 	}
 
-	err = db.SaveAs(sample, 4294967295)
+	err = db.Put(4294967295, sample)
 	if err != nil {
-		t.Fatalf("concur.SaveAs failed: %s", err)
+		t.Fatalf("concur.Put failed: %s", err)
 	}
-	loaded, err = db.Load(4294967295)
+	loaded, err = db.Get(4294967295)
 	if err != nil {
-		t.Fatalf("concur.Load failed: %s", err)
+		t.Fatalf("concur.Get failed: %s", err)
 	}
 	if !bytes.Equal(loaded, sample) {
 		t.Fatalf("save & load mismatch: saved %v loaded %v", sample, loaded)
@@ -103,17 +107,15 @@ type savedItem struct {
 	value [1]byte
 }
 
-const howManySaves = 10
-
 var savedData [howManySaves]savedItem
 
 func TestSaveMany(t *testing.T) {
 	for i := 0; i < howManySaves; i++ {
 		id := uint32(rand.Int63())
-		value := byte(rand.Int() % 256)
-		err := db.SaveAs([]byte{value}, id)
+		value := byte(id % 256)
+		err := db.Put(id, []byte{value})
 		if err != nil {
-			t.Fatalf("concur.SaveAs failed: %s", err)
+			t.Fatalf("concur.Put failed: %s", err)
 		}
 		savedData[i].id = id
 		savedData[i].value[0] = value
@@ -123,13 +125,13 @@ func TestSaveMany(t *testing.T) {
 func TestLoadMany(t *testing.T) {
 	for i := 0; i < howManySaves; i++ {
 		id := savedData[i].id
-		loaded, err := db.Load(id)
+		loaded, err := db.Get(id)
 		if err != nil {
-			t.Fatalf("concur.Load failed: %s", err)
+			t.Fatalf("concur.Get failed: %s", err)
 		}
 		saved := savedData[i].value
 		if loaded[0] != saved[0] {
-			t.Fatalf("save & load mismatch: saved %v loaded %v", saved, loaded)
+			t.Fatalf("save & load mismatch: saved %v loaded %v id %v", saved, loaded, id)
 		}
 	}
 }
