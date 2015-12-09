@@ -67,7 +67,8 @@ import "strconv"
 
 // Concur handles a collection of byte sequences stored in filesystem.
 type Concur struct {
-	dir string
+	initialized bool
+	dir         string
 }
 
 // concurLabel is the file checked for existence of a concur database in a
@@ -122,12 +123,16 @@ func New(dir string) (Concur, error) {
 		log.Printf("concur database initialized in '%s'", dir)
 	}
 	return Concur{
-		dir: dir,
+		initialized: true,
+		dir:         dir,
 	}, nil
 }
 
 // Put creates (or updates) a key with a new value.
 func (c Concur) Put(key uint32, value []byte) error {
+	if !c.initialized {
+		return errors.New("unitialized concur.Concur")
+	}
 	var err error
 	targetPath := path.Join(c.dir, formatPath(key))
 	targetDir := path.Dir(targetPath)
@@ -147,11 +152,17 @@ func (c Concur) Put(key uint32, value []byte) error {
 //
 // Returns the created key.
 func (c Concur) Save(value []byte) (uint32, error) {
+	if !c.initialized {
+		return 0, errors.New("unitialized concur.Concur")
+	}
 	return 0, errors.New("Save() not yet implemented")
 }
 
 // Get retrieves the value associated with a key.
 func (c Concur) Get(key uint32) ([]byte, error) {
+	if !c.initialized {
+		return nil, errors.New("unitialized concur.Concur")
+	}
 	sourcePath := path.Join(c.dir, formatPath(key))
 	buf, err := ioutil.ReadFile(sourcePath)
 	if err != nil {
@@ -162,17 +173,70 @@ func (c Concur) Get(key uint32) ([]byte, error) {
 
 // Erase erases a key.
 func (c Concur) Erase(key uint32) error {
+	if !c.initialized {
+		return errors.New("unitialized concur.Concur")
+	}
 	return errors.New("not yet implemented")
 }
 
 // Exists verifies if a key exists.
 func (c Concur) Exists(key uint32) (bool, error) {
+	if !c.initialized {
+		return false, errors.New("unitialized concur.Concur")
+	}
 	return false, errors.New("not yet implemented")
 }
 
 // Wipe removes a collection from the filesystem.
+//
+// On success, it cleans all content of the given directory.
+// It does not remove the directory itself.
+// It checks for existence of a concur collection in the directory prior
+// to cleaning it.
 func Wipe(dir string) error {
-	return errors.New("not yet implemented")
+	file, err := os.Open(dir)
+	if err != nil {
+		return errors.New(fmt.Sprintf("cannot open '%s': %s", dir, err))
+	}
+	_, err = file.Readdir(1)
+	if err == io.EOF {
+		return nil
+	}
+	file.Close()
+	concurFile := path.Join(dir, concurLabel)
+	concurFileExists := true
+	_, err = os.Stat(concurFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			concurFileExists = false
+		} else {
+			return errors.New(fmt.Sprintf("cannot check for '%s' existence: %s", concurFile, err))
+		}
+	}
+	if !concurFileExists {
+		return errors.New(fmt.Sprintf("directory '%s' does not contain a concur collection", dir))
+	}
+	err = os.Remove(concurFile)
+	if err != nil {
+		return errors.New(fmt.Sprintf("cannot remove '%s': %s", concurFile, err))
+	}
+	file, err = os.Open(dir)
+	if err != nil {
+		return errors.New(fmt.Sprintf("cannot open '%s': %s", dir, err))
+	}
+	defer file.Close()
+	names, err := file.Readdirnames(0)
+	if err != nil {
+		return errors.New(fmt.Sprintf("cannot read directory '%s': %s", dir, err))
+	}
+	for _, name := range names {
+		removePath := path.Join(dir, name)
+		err := os.RemoveAll(removePath)
+		if err != nil {
+			return errors.New(fmt.Sprintf("cannot remove '%s': %s", removePath, err))
+		}
+	}
+	return nil
 }
 
 // formatPath converts a key to a relative filesystem path.

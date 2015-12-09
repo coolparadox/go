@@ -23,13 +23,14 @@ import "os"
 import "bytes"
 import "math/rand"
 import "time"
+import "io"
 
 const (
 	androidMyPath = "/storage/emulated/0/go/var/my_data"
 	otherMyPath   = "/tmp/my_data"
 )
 
-const howManySaves = 100000
+const howManySaves = 10000
 
 var myPath string = otherMyPath
 var db concur.Concur
@@ -54,13 +55,18 @@ func TestInit(t *testing.T) {
 func TestNewEmpty(t *testing.T) {
 
 	var err error
-	err = os.RemoveAll(myPath)
+	err = concur.Wipe(myPath)
 	if err != nil {
-		t.Fatalf("cannot remove directory '%s': %s", myPath, err)
+		t.Fatalf("concur.Wipe failed: %s", err)
 	}
-	err = os.MkdirAll(myPath, 0755)
+	file, err := os.Open(myPath)
 	if err != nil {
-		t.Fatalf("cannot create directory '%s': %s", myPath, err)
+		t.Fatalf("cannot open '%s': %s", myPath, err)
+	}
+	defer file.Close()
+	_, err = file.Readdir(1)
+	if err != io.EOF {
+		t.Fatalf("concur.Wipe did not empty directory '%s'", myPath)
 	}
 	db, err = concur.New(myPath)
 	if err != nil {
