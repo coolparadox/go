@@ -22,6 +22,9 @@ Storage keys are numeric and can be automatically assigned.
 
 Basics
 
+Use New to create (or open) a collection of key / value pairs in the filesystem.
+Use methods of the created Concur type to manage the collection.
+
 	myData := byte[]{0,1,2,3,4,5,6,7,8,9}
 	myCollection, _ := concur.New("/path/to/my/collection");
 	key, _ := myCollection.Save(myData) // store myData in a new key
@@ -32,7 +35,7 @@ Basics
 
 Issues
 
-Keys are 32 bit unsigned integers.
+Keys are 32 bit unsigned integers. Values are byte sequences.
 
 Apart from other storage implementations that map a single file as the database,
 this package takes a simpler and more naive approach where keys are
@@ -41,6 +44,8 @@ storage is the real engine that maps keys to values, and their designers are the
 ones who must take credit if this package happens to achieve satisfactory
 performance.
 
+Wipe can take a long time to return.
+
 Bugs
 
 Concurrent access to a collection is not yet thought of, and can be a
@@ -48,9 +53,9 @@ fruitful source of weirdness.
 
 Wish List
 
-Document filesystem guidelines for better performance with package concur.
-
 Protect against concurrent access to collections.
+
+Document filesystem guidelines for better performance with package concur.
 
 */
 package concur
@@ -189,10 +194,10 @@ func (c Concur) Exists(key uint32) (bool, error) {
 
 // Wipe removes a collection from the filesystem.
 //
-// On success, it cleans all content of the given directory.
-// It does not remove the directory itself.
-// It checks for existence of a concur collection in the directory prior
-// to cleaning it.
+// On success, all content of the given directory is cleaned.
+// The directory itself is not removed.
+//
+// Existence of a concur collection in the directory is verified prior to cleaning it.
 func Wipe(dir string) error {
 	file, err := os.Open(dir)
 	if err != nil {
