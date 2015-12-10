@@ -24,30 +24,26 @@ import "bytes"
 import "math/rand"
 import "time"
 import "io"
+import "flag"
 
-const (
-	androidMyPath = "/storage/emulated/0/go/var/my_data"
-	otherMyPath   = "/tmp/my_data"
-)
+var myPath string
+var howManySaves uint
 
-const howManySaves = 10000
+func init() {
+	flag.StringVar(&myPath, "dir", "/tmp/my_data", "path to concur collection")
+	flag.UintVar(&howManySaves, "saves", 1000, "how many keys to create")
+}
 
-var myPath string = otherMyPath
 var db concur.Concur
 
 func TestInit(t *testing.T) {
 	var err error
-	myPath = otherMyPath
 	err = os.MkdirAll(myPath, 0755)
 	if err != nil {
-		t.Logf("cannot create directory '%s'; assuming Android", myPath)
-		myPath = androidMyPath
-		err = os.MkdirAll(myPath, 0755)
-		if err != nil {
-			t.Fatalf("cannot create directory '%s': %s", myPath, err)
-		}
+		t.Fatalf("cannot create directory '%s': %s", myPath, err)
 	}
-	t.Logf("path to concur db is '%s'", myPath)
+	t.Logf("path to concur db = '%s'", myPath)
+	t.Logf("save test count = %v", howManySaves)
 	rand.Seed(time.Now().Unix())
 
 }
@@ -113,10 +109,11 @@ type savedItem struct {
 	value [1]byte
 }
 
-var savedData [howManySaves]savedItem
+var savedData []savedItem
 
 func TestSaveMany(t *testing.T) {
-	for i := 0; i < howManySaves; i++ {
+	savedData = make([]savedItem, howManySaves)
+	for i := uint(0); i < howManySaves; i++ {
 		id := uint32(rand.Int63())
 		value := byte(id % 256)
 		err := db.Put(id, []byte{value})
@@ -129,7 +126,7 @@ func TestSaveMany(t *testing.T) {
 }
 
 func TestLoadMany(t *testing.T) {
-	for i := 0; i < howManySaves; i++ {
+	for i := uint(0); i < howManySaves; i++ {
 		id := savedData[i].id
 		loaded, err := db.Get(id)
 		if err != nil {
@@ -144,7 +141,7 @@ func TestLoadMany(t *testing.T) {
 
 func TestErase(t *testing.T) {
 	limit := howManySaves / 10
-	for i := 0; i < limit; i++ {
+	for i := uint(0); i < limit; i++ {
 		id := savedData[i].id
 		err := db.Erase(id)
 		if err != nil {
@@ -155,7 +152,7 @@ func TestErase(t *testing.T) {
 
 func TestExists(t *testing.T) {
 	limit := howManySaves / 10
-	for i := 0; i < howManySaves; i++ {
+	for i := uint(0); i < howManySaves; i++ {
 		id := savedData[i].id
 		exists, err := db.Exists(id)
 		if err != nil {

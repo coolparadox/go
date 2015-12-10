@@ -16,14 +16,13 @@
 // along with Concur. If not, see <http://www.gnu.org/licenses/>.
 
 /*
-Package concur is a storage of byte sequences for Go.
-
-Storage keys are numeric and can be automatically assigned.
+Package concur is a storage of byte sequences for Go with automatic key
+generation.
 
 Basics
 
 Use New to create (or open) a collection of key / value pairs in the filesystem.
-Use methods of the created Concur type to manage the collection.
+The collection can then be managed by methods of the collection handler.
 
 	myData := byte[]{0,1,2,3,4,5,6,7,8,9}
 	myCollection, _ := concur.New("/path/to/my/collection");
@@ -35,21 +34,26 @@ Use methods of the created Concur type to manage the collection.
 
 Issues
 
-Keys are 32 bit unsigned integers. Values are byte sequences.
+Keys are 32 bit unsigned integers. Values are byte sequences of arbitrary length.
 
 Apart from other storage implementations that map a single file as the database,
-this package takes a simpler and more naive approach where keys are
+this package takes a more naive (and simpler) approach where keys are
 managed using filesystem subdirectories. Therefore the filesystem chosen for
 storage is the real engine that maps keys to values, and their designers are the
 ones who must take credit if this package happens to achieve satisfactory
 performance.
 
-Wipe can take a long time to return.
+Wipe method can take a long time to return.
 
 Bugs
 
 Concurrent access to a collection is not yet thought of, and can be a
 fruitful source of weirdness.
+
+If wipe method fails or is interrupted before
+termination, subsequent calls to the same directory will fail due to detection of
+non empty, non concur storage directory. If this happens, remove directory contents
+manually as a workaround.
 
 Wish List
 
