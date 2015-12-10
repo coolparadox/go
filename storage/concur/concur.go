@@ -277,3 +277,13 @@ func formatPath(key uint32) string {
 			""),
 		string(os.PathSeparator))
 }
+
+// NewKeyList creates a channel for retrieval of stored keys.
+//
+// The keys channel answers keys in ascending order.
+// When the last key is answered, the channel is closed.
+//
+// Closing the done channel at any time also causes the keys channel to be closed.
+func (c Concur) NewKeyList() (keys <-chan uint32, done chan<- interface{}, err error) {
+	return nil, nil, errors.New("not yet implemented")
+}

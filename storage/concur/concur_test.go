@@ -25,6 +25,7 @@ import "math/rand"
 import "time"
 import "io"
 import "flag"
+import "sort"
 
 var myPath string
 var howManySaves uint
@@ -105,7 +106,7 @@ func TestSaveAs(t *testing.T) {
 }
 
 type savedItem struct {
-	id    uint32
+	key   uint32
 	value [1]byte
 }
 
@@ -113,28 +114,65 @@ var savedData []savedItem
 
 func TestSaveMany(t *testing.T) {
 	savedData = make([]savedItem, howManySaves)
+	savedKeys := make(map[uint32]interface{})
 	for i := uint(0); i < howManySaves; i++ {
-		id := uint32(rand.Int63())
-		value := byte(id % 256)
-		err := db.Put(id, []byte{value})
+		var key uint32
+		for {
+			key = uint32(rand.Int63())
+			_, ok := savedKeys[key]
+			if !ok {
+				break
+			}
+		}
+		savedKeys[key] = nil
+		value := byte(key % 256)
+		err := db.Put(key, []byte{value})
 		if err != nil {
 			t.Fatalf("concur.Put failed: %s", err)
 		}
-		savedData[i].id = id
+		savedData[i].key = key
 		savedData[i].value[0] = value
 	}
 }
 
 func TestLoadMany(t *testing.T) {
 	for i := uint(0); i < howManySaves; i++ {
-		id := savedData[i].id
-		loaded, err := db.Get(id)
+		key := savedData[i].key
+		loaded, err := db.Get(key)
 		if err != nil {
 			t.Fatalf("concur.Get failed: %s", err)
 		}
 		saved := savedData[i].value
 		if loaded[0] != saved[0] {
-			t.Fatalf("save & load mismatch: saved %v loaded %v id %v", saved, loaded, id)
+			t.Fatalf("save & load mismatch: saved %v loaded %v key %v", saved, loaded, key)
+		}
+	}
+}
+
+func TestKeyList(t *testing.T) {
+	ch, done, err := db.NewKeyList()
+	if err != nil {
+		t.Fatalf("concur.NewKeyList failed: %s", err)
+	}
+	defer close(done)
+	receivedKeys := make([]uint32, 0)
+	for key := range ch {
+		receivedKeys = append(receivedKeys, key)
+	}
+	savedKeys := make([]int, 0)
+	for _, data := range savedData {
+		savedKeys = append(savedKeys, int(data.key))
+	}
+	rl := len(receivedKeys)
+	sl := len(savedKeys)
+	if rl != sl {
+		t.Fatalf("received key length mismatch: received %v expected %v", rl, sl)
+	}
+	sort.Ints(savedKeys)
+	for i, rk := range receivedKeys {
+		sk := uint32(savedKeys[i])
+		if sk != rk {
+			t.Fatalf("received key mismatch: received %v expected %v", rk, sk)
 		}
 	}
 }
@@ -142,8 +180,8 @@ func TestLoadMany(t *testing.T) {
 func TestErase(t *testing.T) {
 	limit := howManySaves / 10
 	for i := uint(0); i < limit; i++ {
-		id := savedData[i].id
-		err := db.Erase(id)
+		key := savedData[i].key
+		err := db.Erase(key)
 		if err != nil {
 			t.Fatalf("concur.Erase failed: %s", err)
 		}
@@ -153,18 +191,18 @@ func TestErase(t *testing.T) {
 func TestExists(t *testing.T) {
 	limit := howManySaves / 10
 	for i := uint(0); i < howManySaves; i++ {
-		id := savedData[i].id
-		exists, err := db.Exists(id)
+		key := savedData[i].key
+		exists, err := db.Exists(key)
 		if err != nil {
 			t.Fatalf("concur.Exists failed: %s", err)
 		}
 		if i < limit {
 			if exists {
-				t.Fatalf("concur.Exists mismatch for id %v: %v", id, exists)
+				t.Fatalf("concur.Exists mismatch for key %v: %v", key, exists)
 			}
 		} else {
 			if !exists {
-				t.Fatalf("concur.Exists mismatch for id %v: %v", id, exists)
+				t.Fatalf("concur.Exists mismatch for key %v: %v", key, exists)
 			}
 		}
 	}
