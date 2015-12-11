@@ -26,6 +26,7 @@ import "time"
 import "io"
 import "flag"
 import "sort"
+import "path"
 
 var myPath string
 var howManySaves uint
@@ -205,5 +206,16 @@ func TestExists(t *testing.T) {
 				t.Fatalf("concur.Exists mismatch for key %v: %v", key, exists)
 			}
 		}
+	}
+}
+
+func TestListFormatChars(t *testing.T) {
+	var err error
+	chars, err := concur.ListFormatCharsInDir(path.Join(myPath, "0"))
+	if err != nil {
+		t.Fatalf("ListFormatCharsInDir failed: %s", err)
+	}
+	for _, name := range chars {
+		t.Logf("format char %c", name)
 	}
 }

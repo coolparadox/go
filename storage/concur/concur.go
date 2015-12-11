@@ -37,8 +37,8 @@ Issues
 Keys are 32 bit unsigned integers. Values are byte sequences of arbitrary length.
 
 Apart from other storage implementations that map a single file as the database,
-this package takes a more naive (and simpler) approach where keys are
-managed using filesystem subdirectories. Therefore the filesystem chosen for
+this package takes an experimental, more naive (and simpler) approach where keys
+are managed using filesystem subdirectories. Therefore the filesystem chosen for
 storage is the real engine that maps keys to values, and their designers are the
 ones who must take credit if this package happens to achieve satisfactory
 performance.
@@ -73,8 +73,10 @@ import "log"
 import "io/ioutil"
 import "strings"
 import "strconv"
+import "sort"
 
-// Concur handles a collection of byte sequences stored in filesystem.
+// Concur handles a collection of byte sequences stored in a directory of
+// the filesystem.
 type Concur struct {
 	initialized bool
 	dir         string
@@ -159,7 +161,7 @@ func (c Concur) Put(key uint32, value []byte) error {
 // Save creates a key with a new value.
 // The key is automatically assigned and guaranteed to be new.
 //
-// Returns the created key.
+// Returns the assigned key.
 func (c Concur) Save(value []byte) (uint32, error) {
 	if !c.initialized {
 		return 0, errors.New("unitialized concur.Concur")
@@ -282,8 +284,68 @@ func formatPath(key uint32) string {
 //
 // The keys channel answers keys in ascending order.
 // When the last key is answered, the channel is closed.
+// Changes in key set ocurring after creation of keys channel are not
+// guaranteed to be detected, nor to be not.
 //
 // Closing the done channel at any time also causes the keys channel to be closed.
 func (c Concur) NewKeyList() (keys <-chan uint32, done chan<- interface{}, err error) {
 	return nil, nil, errors.New("not yet implemented")
+}
+
+const formatSequence = "0123456789abcdefghijklmnopqrstuvwxyz"
+var formatMap map[rune]uint32
+
+func init() {
+
+	// Initialize format map
+	if len(formatSequence) < 36 {
+		panic("missing format characters")
+	}
+	formatMap = make(map[rune]uint32, 36)
+	for i := 0; i < 36 ; i++ {
+		key := rune(formatSequence[i])
+		formatMap[key] = uint32(i)
+	}
+}
+
+type runeSlice []rune
+
+func (s runeSlice) Len() int {
+	return len(s)
+}
+
+func (s runeSlice) Less(i, j int) bool {
+	return s[i] < s[j]
+}
+
+func (s runeSlice) Swap(i, j int) {
+	aux := s[i]
+	s[i] = s[j]
+	s[j] = aux
+}
+
+func ListFormatCharsInDir(dir string) ([]rune, error) {
+	var err error
+	f, err := os.Open(dir)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("cannot open directory '%s': %s", dir, err))
+	}
+	defer f.Close()
+	names, err := f.Readdirnames(0)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("cannot read directory '%s': %s", dir, err))
+	}
+	ans := make([]rune, 0, 36)
+	for _, name := range names {
+		if len(name) > 1 {
+			continue
+		}
+		char := rune(name[0])
+		_, ok := formatMap[char]
+		if ok {
+			ans = append(ans, char)
+		}
+	}
+	sort.Sort(runeSlice(ans))
+	return ans, nil
 }
