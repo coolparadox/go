@@ -73,7 +73,7 @@ import "log"
 import "io/ioutil"
 import "strings"
 import "strconv"
-import "sort"
+import "github.com/coolparadox/go/sort/runeslice"
 
 // Concur handles a collection of byte sequences stored in a directory of
 // the filesystem.
@@ -293,6 +293,7 @@ func (c Concur) NewKeyList() (keys <-chan uint32, done chan<- interface{}, err e
 }
 
 const formatSequence = "0123456789abcdefghijklmnopqrstuvwxyz"
+
 var formatMap map[rune]uint32
 
 func init() {
@@ -302,26 +303,10 @@ func init() {
 		panic("missing format characters")
 	}
 	formatMap = make(map[rune]uint32, 36)
-	for i := 0; i < 36 ; i++ {
+	for i := 0; i < 36; i++ {
 		key := rune(formatSequence[i])
 		formatMap[key] = uint32(i)
 	}
-}
-
-type runeSlice []rune
-
-func (s runeSlice) Len() int {
-	return len(s)
-}
-
-func (s runeSlice) Less(i, j int) bool {
-	return s[i] < s[j]
-}
-
-func (s runeSlice) Swap(i, j int) {
-	aux := s[i]
-	s[i] = s[j]
-	s[j] = aux
 }
 
 func ListFormatCharsInDir(dir string) ([]rune, error) {
@@ -346,6 +331,6 @@ func ListFormatCharsInDir(dir string) ([]rune, error) {
 			ans = append(ans, char)
 		}
 	}
-	sort.Sort(runeSlice(ans))
+	runeslice.RuneSlice(ans).Sort()
 	return ans, nil
 }
