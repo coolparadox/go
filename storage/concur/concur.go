@@ -71,9 +71,8 @@ import "os"
 import "io"
 import "log"
 import "io/ioutil"
-import "strings"
-import "strconv"
-import "github.com/coolparadox/go/sort/runeslice"
+
+//import "github.com/coolparadox/go/sort/runeslice"
 
 // Concur handles a collection of byte sequences stored in a directory of
 // the filesystem.
@@ -145,7 +144,7 @@ func (r Concur) Put(key uint32, value []byte) error {
 		return errors.New("unitialized concur.Concur")
 	}
 	var err error
-	targetPath := path.Join(r.dir, FormatPath(key))
+	targetPath := path.Join(r.dir, formatPath(key))
 	targetDir := path.Dir(targetPath)
 	err = os.MkdirAll(targetDir, 0777)
 	if err != nil {
@@ -174,7 +173,7 @@ func (r Concur) Get(key uint32) ([]byte, error) {
 	if !r.initialized {
 		return nil, errors.New("unitialized concur.Concur")
 	}
-	sourcePath := path.Join(r.dir, FormatPath(key))
+	sourcePath := path.Join(r.dir, formatPath(key))
 	buf, err := ioutil.ReadFile(sourcePath)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("cannot read file '%s': %s", sourcePath, err))
@@ -188,7 +187,7 @@ func (r Concur) Erase(key uint32) error {
 		return errors.New("unitialized concur.Concur")
 	}
 	var err error
-	targetPath := path.Join(r.dir, FormatPath(key))
+	targetPath := path.Join(r.dir, formatPath(key))
 	err = os.Remove(targetPath)
 	if err != nil {
 		return errors.New(fmt.Sprintf("cannot remove file '%s': %s", targetPath, err))
@@ -202,7 +201,7 @@ func (r Concur) Exists(key uint32) (bool, error) {
 		return false, errors.New("unitialized concur.Concur")
 	}
 	var err error
-	targetPath := path.Join(r.dir, FormatPath(key))
+	targetPath := path.Join(r.dir, formatPath(key))
 	targetPathExists := true
 	_, err = os.Stat(targetPath)
 	if err != nil {
@@ -267,19 +266,6 @@ func Wipe(dir string) error {
 	return nil
 }
 
-// formatPath converts a key to a relative filesystem path.
-func FormatPath(key uint32) string {
-	return strings.Join(
-		strings.Split(
-			fmt.Sprintf(
-				"%07s",
-				strconv.FormatUint(
-					uint64(key),
-					36)),
-			""),
-		string(os.PathSeparator))
-}
-
 // NewKeyList creates a channel for retrieval of stored keys.
 //
 // The keys channel answers keys in ascending order.
@@ -312,7 +298,7 @@ func init() {
 	}
 }
 
-func ListFormatCharsInDir(dir string) ([]rune, error) {
+func ListKeyComponentsInDir(dir string) ([]uint32, error) {
 	var err error
 	f, err := os.Open(dir)
 	if err != nil {
@@ -323,34 +309,19 @@ func ListFormatCharsInDir(dir string) ([]rune, error) {
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("cannot read directory '%s': %s", dir, err))
 	}
-	answer := make([]rune, 0, 36)
+	answer := make([]uint32, 0, 36)
 	for _, name := range names {
 		if len(name) > 1 {
 			continue
 		}
 		char := rune(name[0])
-		_, ok := parseMap[char]
+		component, ok := parseMap[char]
 		if ok {
-			answer = append(answer, char)
+			answer = append(answer, component)
 		}
 	}
-	runeslice.RuneSlice(answer).Sort()
+	Uint32Slice(answer).Sort()
 	return answer, nil
-}
-
-func (r Concur) SmallestKeyNotLessThan(k uint32) (uint32, bool, error) {
-	if !r.initialized {
-		return 0, false, errors.New("unitialized concur.Concur")
-	}
-	var err error
-	ok, err := r.Exists(k)
-	if err != nil {
-		return 0, false, errors.New(fmt.Sprintf("cannot check for existence of key '%v': %s", k, err))
-	}
-	if ok {
-		return k, true, nil
-	}
-	return 0, false, errors.New("not yet implemented")
 }
 
 type BrokenKey [7]uint32
@@ -381,7 +352,8 @@ func composeKey(br *BrokenKey, level int) uint32 {
 	return answer
 }
 
-func FormatPath2(key uint32) string {
+// formatPath converts a key to a relative filesystem path.
+func formatPath(key uint32) string {
 	var r [7]rune
 	for i, c := range DecomposeKey(key) {
 		r[i] = formatMap[c]
@@ -402,4 +374,23 @@ func FormatPath2(key uint32) string {
 		os.PathSeparator,
 		r[0],
 	)
+}
+
+func (r Concur) SmallestKeyNotLessThan(k uint32) (uint32, bool, error) {
+	if !r.initialized {
+		return 0, false, errors.New("unitialized concur.Concur")
+	}
+	var err error
+	ok, err := r.Exists(k)
+	if err != nil {
+		return 0, false, errors.New(fmt.Sprintf("cannot check for existence of key '%v': %s", k, err))
+	}
+	if ok {
+		return k, true, nil
+	}
+	return 0, false, errors.New("not yet implemented")
+}
+
+func smallestKeyNotLessThan(br BrokenKey, level int) (BrokenKey, bool, error) {
+	return BrokenKey{0, 0, 0, 0, 0, 0, 0}, false, nil
 }

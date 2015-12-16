@@ -27,7 +27,6 @@ import "io"
 import "flag"
 import "sort"
 import "path"
-import "strings"
 
 var myPath string
 var howManySaves uint
@@ -210,25 +209,13 @@ func TestExists(t *testing.T) {
 	}
 }
 
-func TestListFormatChars(t *testing.T) {
+func TestListKeyComponentsInDir(t *testing.T) {
 	var err error
-	chars, err := concur.ListFormatCharsInDir(path.Join(myPath, "0"))
+	components, err := concur.ListKeyComponentsInDir(path.Join(myPath, "0"))
 	if err != nil {
-		t.Fatalf("ListFormatCharsInDir failed: %s", err)
+		t.Fatalf("ListKeyComponentsInDir failed: %s", err)
 	}
-	for _, name := range chars {
-		t.Logf("format char %c", name)
-	}
-}
-
-func TestFormatPath(t *testing.T) {
-	for _, data := range savedData {
-		k := data.key
-		p1 := concur.FormatPath(k)
-		p2 := concur.FormatPath2(k)
-		if !strings.EqualFold(p1, p2) {
-			t.Fatalf("FormatPath mismatch: '%s', '%s'", p1, p2)
-		}
-		t.Logf("%s", p2)
+	for _, kc := range components {
+		t.Logf("key component %v", kc)
 	}
 }
