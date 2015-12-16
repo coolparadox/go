@@ -27,6 +27,7 @@ import "io"
 import "flag"
 import "sort"
 import "path"
+import "strings"
 
 var myPath string
 var howManySaves uint
@@ -217,5 +218,17 @@ func TestListFormatChars(t *testing.T) {
 	}
 	for _, name := range chars {
 		t.Logf("format char %c", name)
+	}
+}
+
+func TestFormatPath(t *testing.T) {
+	for _, data := range savedData {
+		k := data.key
+		p1 := concur.FormatPath(k)
+		p2 := concur.FormatPath2(k)
+		if !strings.EqualFold(p1, p2) {
+			t.Fatalf("FormatPath mismatch: '%s', '%s'", p1, p2)
+		}
+		t.Logf("%s", p2)
 	}
 }

@@ -140,12 +140,12 @@ func New(dir string) (Concur, error) {
 }
 
 // Put creates (or updates) a key with a new value.
-func (c Concur) Put(key uint32, value []byte) error {
-	if !c.initialized {
+func (r Concur) Put(key uint32, value []byte) error {
+	if !r.initialized {
 		return errors.New("unitialized concur.Concur")
 	}
 	var err error
-	targetPath := path.Join(c.dir, formatPath(key))
+	targetPath := path.Join(r.dir, FormatPath(key))
 	targetDir := path.Dir(targetPath)
 	err = os.MkdirAll(targetDir, 0777)
 	if err != nil {
@@ -162,19 +162,19 @@ func (c Concur) Put(key uint32, value []byte) error {
 // The key is automatically assigned and guaranteed to be new.
 //
 // Returns the assigned key.
-func (c Concur) Save(value []byte) (uint32, error) {
-	if !c.initialized {
+func (r Concur) Save(value []byte) (uint32, error) {
+	if !r.initialized {
 		return 0, errors.New("unitialized concur.Concur")
 	}
 	return 0, errors.New("Save() not yet implemented")
 }
 
 // Get retrieves the value associated with a key.
-func (c Concur) Get(key uint32) ([]byte, error) {
-	if !c.initialized {
+func (r Concur) Get(key uint32) ([]byte, error) {
+	if !r.initialized {
 		return nil, errors.New("unitialized concur.Concur")
 	}
-	sourcePath := path.Join(c.dir, formatPath(key))
+	sourcePath := path.Join(r.dir, FormatPath(key))
 	buf, err := ioutil.ReadFile(sourcePath)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("cannot read file '%s': %s", sourcePath, err))
@@ -183,12 +183,12 @@ func (c Concur) Get(key uint32) ([]byte, error) {
 }
 
 // Erase erases a key.
-func (c Concur) Erase(key uint32) error {
-	if !c.initialized {
+func (r Concur) Erase(key uint32) error {
+	if !r.initialized {
 		return errors.New("unitialized concur.Concur")
 	}
 	var err error
-	targetPath := path.Join(c.dir, formatPath(key))
+	targetPath := path.Join(r.dir, FormatPath(key))
 	err = os.Remove(targetPath)
 	if err != nil {
 		return errors.New(fmt.Sprintf("cannot remove file '%s': %s", targetPath, err))
@@ -197,12 +197,12 @@ func (c Concur) Erase(key uint32) error {
 }
 
 // Exists verifies if a key exists.
-func (c Concur) Exists(key uint32) (bool, error) {
-	if !c.initialized {
+func (r Concur) Exists(key uint32) (bool, error) {
+	if !r.initialized {
 		return false, errors.New("unitialized concur.Concur")
 	}
 	var err error
-	targetPath := path.Join(c.dir, formatPath(key))
+	targetPath := path.Join(r.dir, FormatPath(key))
 	targetPathExists := true
 	_, err = os.Stat(targetPath)
 	if err != nil {
@@ -268,7 +268,7 @@ func Wipe(dir string) error {
 }
 
 // formatPath converts a key to a relative filesystem path.
-func formatPath(key uint32) string {
+func FormatPath(key uint32) string {
 	return strings.Join(
 		strings.Split(
 			fmt.Sprintf(
@@ -288,24 +288,27 @@ func formatPath(key uint32) string {
 // guaranteed to be detected, nor to be not.
 //
 // Closing the done channel at any time also causes the keys channel to be closed.
-func (c Concur) NewKeyList() (keys <-chan uint32, done chan<- interface{}, err error) {
+func (r Concur) NewKeyList() (keys <-chan uint32, done chan<- interface{}, err error) {
 	return nil, nil, errors.New("not yet implemented")
 }
 
 const formatSequence = "0123456789abcdefghijklmnopqrstuvwxyz"
 
-var formatMap map[rune]uint32
+var formatMap map[uint32]rune
+var parseMap map[rune]uint32
 
 func init() {
 
-	// Initialize format map
+	// Initialize maps
 	if len(formatSequence) < 36 {
 		panic("missing format characters")
 	}
-	formatMap = make(map[rune]uint32, 36)
+	formatMap = make(map[uint32]rune, 36)
+	parseMap = make(map[rune]uint32, 36)
 	for i := 0; i < 36; i++ {
 		key := rune(formatSequence[i])
-		formatMap[key] = uint32(i)
+		formatMap[uint32(i)] = key
+		parseMap[key] = uint32(i)
 	}
 }
 
@@ -320,17 +323,83 @@ func ListFormatCharsInDir(dir string) ([]rune, error) {
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("cannot read directory '%s': %s", dir, err))
 	}
-	ans := make([]rune, 0, 36)
+	answer := make([]rune, 0, 36)
 	for _, name := range names {
 		if len(name) > 1 {
 			continue
 		}
 		char := rune(name[0])
-		_, ok := formatMap[char]
+		_, ok := parseMap[char]
 		if ok {
-			ans = append(ans, char)
+			answer = append(answer, char)
 		}
 	}
-	runeslice.RuneSlice(ans).Sort()
-	return ans, nil
+	runeslice.RuneSlice(answer).Sort()
+	return answer, nil
+}
+
+func (r Concur) SmallestKeyNotLessThan(k uint32) (uint32, bool, error) {
+	if !r.initialized {
+		return 0, false, errors.New("unitialized concur.Concur")
+	}
+	var err error
+	ok, err := r.Exists(k)
+	if err != nil {
+		return 0, false, errors.New(fmt.Sprintf("cannot check for existence of key '%v': %s", k, err))
+	}
+	if ok {
+		return k, true, nil
+	}
+	return 0, false, errors.New("not yet implemented")
+}
+
+type BrokenKey [7]uint32
+
+func DecomposeKey(key uint32) BrokenKey {
+	answer := new(BrokenKey)
+	updateBrokenKey(answer, 0, key)
+	return *answer
+}
+
+func updateBrokenKey(br *BrokenKey, level int, key uint32) {
+	(*br)[level] = key % 36
+	if level >= 6 {
+		return
+	}
+	updateBrokenKey(br, level+1, key/36)
+}
+
+func ComposeKey(br BrokenKey) uint32 {
+	return composeKey(&br, 0)
+}
+
+func composeKey(br *BrokenKey, level int) uint32 {
+	answer := (*br)[level]
+	if level < 6 {
+		answer += 36 * composeKey(br, level+1)
+	}
+	return answer
+}
+
+func FormatPath2(key uint32) string {
+	var r [7]rune
+	for i, c := range DecomposeKey(key) {
+		r[i] = formatMap[c]
+	}
+	return fmt.Sprintf(
+		"%c%c%c%c%c%c%c%c%c%c%c%c%c",
+		r[6],
+		os.PathSeparator,
+		r[5],
+		os.PathSeparator,
+		r[4],
+		os.PathSeparator,
+		r[3],
+		os.PathSeparator,
+		r[2],
+		os.PathSeparator,
+		r[1],
+		os.PathSeparator,
+		r[0],
+	)
 }
