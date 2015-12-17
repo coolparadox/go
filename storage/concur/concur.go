@@ -144,7 +144,7 @@ func (r Concur) Put(key uint32, value []byte) error {
 		return errors.New("unitialized concur.Concur")
 	}
 	var err error
-	targetPath := path.Join(r.dir, formatPath(key))
+	targetPath := formatPath(key, r.dir)
 	targetDir := path.Dir(targetPath)
 	err = os.MkdirAll(targetDir, 0777)
 	if err != nil {
@@ -173,7 +173,7 @@ func (r Concur) Get(key uint32) ([]byte, error) {
 	if !r.initialized {
 		return nil, errors.New("unitialized concur.Concur")
 	}
-	sourcePath := path.Join(r.dir, formatPath(key))
+	sourcePath := formatPath(key, r.dir)
 	buf, err := ioutil.ReadFile(sourcePath)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("cannot read file '%s': %s", sourcePath, err))
@@ -187,7 +187,7 @@ func (r Concur) Erase(key uint32) error {
 		return errors.New("unitialized concur.Concur")
 	}
 	var err error
-	targetPath := path.Join(r.dir, formatPath(key))
+	targetPath := formatPath(key, r.dir)
 	err = os.Remove(targetPath)
 	if err != nil {
 		return errors.New(fmt.Sprintf("cannot remove file '%s': %s", targetPath, err))
@@ -201,7 +201,7 @@ func (r Concur) Exists(key uint32) (bool, error) {
 		return false, errors.New("unitialized concur.Concur")
 	}
 	var err error
-	targetPath := path.Join(r.dir, formatPath(key))
+	targetPath := formatPath(key, r.dir)
 	targetPathExists := true
 	_, err = os.Stat(targetPath)
 	if err != nil {
@@ -266,18 +266,6 @@ func Wipe(dir string) error {
 	return nil
 }
 
-// NewKeyList creates a channel for retrieval of stored keys.
-//
-// The keys channel answers keys in ascending order.
-// When the last key is answered, the channel is closed.
-// Changes in key set ocurring after creation of keys channel are not
-// guaranteed to be detected, nor to be not.
-//
-// Closing the done channel at any time also causes the keys channel to be closed.
-func (r Concur) NewKeyList() (keys <-chan uint32, done chan<- interface{}, err error) {
-	return nil, nil, errors.New("not yet implemented")
-}
-
 const formatSequence = "0123456789abcdefghijklmnopqrstuvwxyz"
 
 var formatMap map[uint32]rune
@@ -340,57 +328,223 @@ func updateBrokenKey(br *BrokenKey, level int, key uint32) {
 	updateBrokenKey(br, level+1, key/36)
 }
 
-func ComposeKey(br BrokenKey) uint32 {
-	return composeKey(&br, 0)
-}
-
-func composeKey(br *BrokenKey, level int) uint32 {
-	answer := (*br)[level]
-	if level < 6 {
-		answer += 36 * composeKey(br, level+1)
+func ComposeKey(br *BrokenKey) (uint32, error) {
+	var over bool
+	over = br[6] > 1
+	over = over || (br[6] == 1 && br[5] > 35)
+	over = over || (br[6] == 1 && br[5] == 35 && br[4] > 1)
+	over = over || (br[6] == 1 && br[5] == 35 && br[4] == 1 && br[3] > 4)
+	over = over || (br[6] == 1 && br[5] == 35 && br[4] == 1 && br[3] == 4 && br[2] > 1)
+	over = over || (br[6] == 1 && br[5] == 35 && br[4] == 1 && br[3] == 4 && br[2] == 1 && br[1] > 35)
+	over = over || (br[6] == 1 && br[5] == 35 && br[4] == 1 && br[3] == 4 && br[2] == 1 && br[1] == 35 && br[0] > 3)
+	if over {
+		return 0, errors.New(fmt.Sprintf("impossible broken key: %v", *br))
 	}
-	return answer
+	var answer uint32
+	answer = br[6]
+	answer *= 36
+	answer += br[5]
+	answer *= 36
+	answer += br[4]
+	answer *= 36
+	answer += br[3]
+	answer *= 36
+	answer += br[2]
+	answer *= 36
+	answer += br[1]
+	answer *= 36
+	answer += br[0]
+	return answer, nil
 }
 
 // formatPath converts a key to a relative filesystem path.
-func formatPath(key uint32) string {
-	var r [7]rune
-	for i, c := range DecomposeKey(key) {
-		r[i] = formatMap[c]
-	}
-	return fmt.Sprintf(
-		"%c%c%c%c%c%c%c%c%c%c%c%c%c",
-		r[6],
-		os.PathSeparator,
-		r[5],
-		os.PathSeparator,
-		r[4],
-		os.PathSeparator,
-		r[3],
-		os.PathSeparator,
-		r[2],
-		os.PathSeparator,
-		r[1],
-		os.PathSeparator,
-		r[0],
-	)
+func formatPath(key uint32, baseDir string) string {
+	br := DecomposeKey(key)
+	return keyComponentPath(&br, 0, baseDir)
 }
 
-func (r Concur) SmallestKeyNotLessThan(k uint32) (uint32, bool, error) {
+// SmallestKeyNotLessThan receives a key and answers it if it exists.
+// If key does not exist, the closest key in ascending order is answered instead.
+//
+// The bool return value tells if a valid key was answered (ie, false means end of keys).
+func (r Concur) SmallestKeyNotLessThan(key uint32) (uint32, bool, error) {
 	if !r.initialized {
 		return 0, false, errors.New("unitialized concur.Concur")
 	}
-	var err error
-	ok, err := r.Exists(k)
-	if err != nil {
-		return 0, false, errors.New(fmt.Sprintf("cannot check for existence of key '%v': %s", k, err))
-	}
-	if ok {
-		return k, true, nil
+	//var err error
+	brKey := DecomposeKey(key)
+	for level := 0; level < 7; level++ {
+		if level > 0 {
+			for i := 0; i < level; i++ {
+				brKey[i] = 35
+			}
+			k, err := ComposeKey(&brKey)
+			if err != nil {
+				return 0, false, nil
+			}
+			if k < 4294967295 {
+				k++
+			} else {
+				return 0, false, nil
+			}
+			brKey = DecomposeKey(k)
+		}
+		br, found, err := smallestKeyNotLessThanInLevel(&brKey, 0, r.dir)
+		if err != nil {
+			return 0, false, errors.New(fmt.Sprintf("cannot lookup key %v: %s", key, err))
+		}
+		if found {
+			answer, err := ComposeKey(&br)
+			if err != nil {
+				return 0, false, nil
+			}
+			return answer, true, nil
+		}
 	}
 	return 0, false, errors.New("not yet implemented")
 }
 
-func smallestKeyNotLessThan(br BrokenKey, level int) (BrokenKey, bool, error) {
+func smallestKeyNotLessThanInLevel(br *BrokenKey, level int, baseDir string) (BrokenKey, bool, error) {
+	kcDir := keyComponentPath(br, level+1, baseDir)
+	kcs, err := ListKeyComponentsInDir(kcDir)
+	if err != nil {
+		return BrokenKey{0, 0, 0, 0, 0, 0, 0}, false, errors.New(fmt.Sprintf("cannot list key components in '%s': %s", kcDir, err))
+	}
+	for _, kc := range kcs {
+		if kc < br[level] {
+			continue
+		}
+		if level <= 0 {
+			return BrokenKey{br[6], br[5], br[4], br[3], br[2], br[1], kc}, true, nil
+		} else {
+			brn := *br
+			for i := 0; i < level; i++ {
+				brn[i] = 0
+			}
+			brf, found, err := smallestKeyNotLessThanInLevel(&brn, level-1, baseDir)
+			if err != nil {
+				return BrokenKey{0, 0, 0, 0, 0, 0, 0}, false, err
+			}
+			if found {
+				return brf, true, nil
+			}
+		}
+	}
 	return BrokenKey{0, 0, 0, 0, 0, 0, 0}, false, nil
+}
+
+func keyComponentPath(br *BrokenKey, level int, baseDir string) string {
+	var r [7]rune
+	for i, c := range br {
+		r[i] = formatMap[c]
+	}
+	switch level {
+
+	case 0:
+		return fmt.Sprintf(
+			"%s%c%c%c%c%c%c%c%c%c%c%c%c%c%c",
+			baseDir,
+			os.PathSeparator,
+			r[6],
+			os.PathSeparator,
+			r[5],
+			os.PathSeparator,
+			r[4],
+			os.PathSeparator,
+			r[3],
+			os.PathSeparator,
+			r[2],
+			os.PathSeparator,
+			r[1],
+			os.PathSeparator,
+			r[0],
+		)
+
+	case 1:
+		return fmt.Sprintf(
+			"%s%c%c%c%c%c%c%c%c%c%c%c%c",
+			baseDir,
+			os.PathSeparator,
+			r[6],
+			os.PathSeparator,
+			r[5],
+			os.PathSeparator,
+			r[4],
+			os.PathSeparator,
+			r[3],
+			os.PathSeparator,
+			r[2],
+			os.PathSeparator,
+			r[1],
+		)
+
+	case 2:
+		return fmt.Sprintf(
+			"%s%c%c%c%c%c%c%c%c%c%c",
+			baseDir,
+			os.PathSeparator,
+			r[6],
+			os.PathSeparator,
+			r[5],
+			os.PathSeparator,
+			r[4],
+			os.PathSeparator,
+			r[3],
+			os.PathSeparator,
+			r[2],
+		)
+
+	case 3:
+		return fmt.Sprintf(
+			"%s%c%c%c%c%c%c%c%c",
+			baseDir,
+			os.PathSeparator,
+			r[6],
+			os.PathSeparator,
+			r[5],
+			os.PathSeparator,
+			r[4],
+			os.PathSeparator,
+			r[3],
+		)
+
+	case 4:
+		return fmt.Sprintf(
+			"%s%c%c%c%c%c%c",
+			baseDir,
+			os.PathSeparator,
+			r[6],
+			os.PathSeparator,
+			r[5],
+			os.PathSeparator,
+			r[4],
+		)
+
+	case 5:
+		return fmt.Sprintf(
+			"%s%c%c%c%c",
+			baseDir,
+			os.PathSeparator,
+			r[6],
+			os.PathSeparator,
+			r[5],
+		)
+
+	case 6:
+		return fmt.Sprintf(
+			"%s%c%c",
+			baseDir,
+			os.PathSeparator,
+			r[6],
+		)
+
+	case 7:
+		return fmt.Sprintf(
+			"%s",
+			baseDir,
+		)
+
+	}
+	panic(fmt.Sprintf("impossible level value %v", level))
+
 }
