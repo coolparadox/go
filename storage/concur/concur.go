@@ -266,6 +266,9 @@ func Wipe(dir string) error {
 	return nil
 }
 
+// keyMax is the maximum value of a key.
+const KeyMax = 4294967295
+
 // formatSequence contains characters to be used for mapping between
 // filesystem names and components of keys in base 36 representation.
 // At least 36 characters must be provided in ascending order of representation value.
@@ -417,11 +420,14 @@ func (r Concur) SmallestKeyNotLessThan(key uint32) (uint32, bool, error) {
 			if err != nil {
 				return 0, false, nil
 			}
-			if k < 4294967295 {
+			if k < KeyMax {
 				k++
 			} else {
+
+				// Key range limit reached.
 				return 0, false, nil
-			}
+
+}
 			minimum = decomposeKey(k)
 
 		}

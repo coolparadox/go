@@ -26,7 +26,6 @@ import "time"
 import "io"
 import "flag"
 import "sort"
-import "path"
 
 var myPath string
 var howManySaves uint
@@ -151,14 +150,23 @@ func TestLoadMany(t *testing.T) {
 }
 
 func TestKeyList(t *testing.T) {
-	ch, done, err := db.NewKeyList()
+	key, ok, err := db.SmallestKeyNotLessThan(0)
 	if err != nil {
-		t.Fatalf("concur.NewKeyList failed: %s", err)
+		t.Fatalf("concur.SmallestKeyNotLessThan failed: %s", err)
 	}
-	defer close(done)
+	if !ok {
+		t.Fatalf("empty database!?")
+	}
 	receivedKeys := make([]uint32, 0)
-	for key := range ch {
+	for ok {
 		receivedKeys = append(receivedKeys, key)
+		if key == concur.KeyMax {
+			break
+		}
+		key, ok, err = db.SmallestKeyNotLessThan(key+1)
+		if err != nil {
+			t.Fatalf("concur.SmallestKeyNotLessThan failed: %s", err)
+		}
 	}
 	savedKeys := make([]int, 0)
 	for _, data := range savedData {
@@ -206,16 +214,5 @@ func TestExists(t *testing.T) {
 				t.Fatalf("concur.Exists mismatch for key %v: %v", key, exists)
 			}
 		}
-	}
-}
-
-func TestListKeyComponentsInDir(t *testing.T) {
-	var err error
-	components, err := concur.ListKeyComponentsInDir(path.Join(myPath, "0"))
-	if err != nil {
-		t.Fatalf("ListKeyComponentsInDir failed: %s", err)
-	}
-	for _, kc := range components {
-		t.Logf("key component %v", kc)
 	}
 }
