@@ -267,7 +267,7 @@ func Wipe(dir string) error {
 }
 
 // keyMax is the maximum value of a key.
-const KeyMax = 4294967295
+const KeyMax = 0xFFFFFFFF
 
 // formatSequence contains characters to be used for mapping between
 // filesystem names and components of keys in base 36 representation.
@@ -299,10 +299,15 @@ func init() {
 // sorted in ascending order.
 func listKeyComponentsInDir(dir string) ([]uint32, error) {
 
+	answer := make([]uint32, 0, 36)
+
 	// Iterate through all names in directory.
 	var err error
 	f, err := os.Open(dir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return answer, nil
+		}
 		return nil, errors.New(fmt.Sprintf("cannot open directory '%s': %s", dir, err))
 	}
 	defer f.Close()
@@ -310,7 +315,6 @@ func listKeyComponentsInDir(dir string) ([]uint32, error) {
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("cannot read directory '%s': %s", dir, err))
 	}
-	answer := make([]uint32, 0, 36)
 	for _, name := range names {
 
 		// If name is a key character, store its component value for answer.
@@ -364,6 +368,7 @@ func composeKey(br *brokenKey) (uint32, error) {
 	of = of || (br[6] == 1 && br[5] == 35 && br[4] == 1 && br[3] == 4 && br[2] == 1 && br[1] > 35)
 	of = of || (br[6] == 1 && br[5] == 35 && br[4] == 1 && br[3] == 4 && br[2] == 1 && br[1] == 35 && br[0] > 3)
 	if of {
+		_ = "breakpoint"
 		return 0, errors.New(fmt.Sprintf("impossible broken key: %v", *br))
 	}
 
@@ -427,7 +432,7 @@ func (r Concur) SmallestKeyNotLessThan(key uint32) (uint32, bool, error) {
 				// Key range limit reached.
 				return 0, false, nil
 
-}
+			}
 			minimum = decomposeKey(k)
 
 		}
@@ -442,6 +447,7 @@ func (r Concur) SmallestKeyNotLessThan(key uint32) (uint32, bool, error) {
 			// Yay!! Found it :-)
 			answer, err := composeKey(&br)
 			if err != nil {
+				// Assume compose failure is due to garbage leading to impossible broken keys.
 				return 0, false, nil
 			}
 			return answer, true, nil
@@ -479,7 +485,7 @@ func smallestKeyNotLessThanInLevel(br *brokenKey, level int, baseDir string) (br
 		if level <= 0 {
 
 			// Found a matching component in the deepest level.
-			return brokenKey{br[6], br[5], br[4], br[3], br[2], br[1], kc}, true, nil
+			return brokenKey{kc, br[1], br[2], br[3], br[4], br[5], br[6]}, true, nil
 
 		} else {
 

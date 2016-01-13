@@ -25,7 +25,6 @@ import "math/rand"
 import "time"
 import "io"
 import "flag"
-import "sort"
 
 var myPath string
 var howManySaves uint
@@ -91,16 +90,26 @@ func TestSaveAs(t *testing.T) {
 		t.Fatalf("save & load mismatch: saved %v loaded %v", sample, loaded)
 	}
 
-	err = db.Put(4294967295, sample)
+	err = db.Put(concur.KeyMax, sample)
 	if err != nil {
 		t.Fatalf("concur.Put failed: %s", err)
 	}
-	loaded, err = db.Get(4294967295)
+	loaded, err = db.Get(concur.KeyMax)
 	if err != nil {
 		t.Fatalf("concur.Get failed: %s", err)
 	}
 	if !bytes.Equal(loaded, sample) {
 		t.Fatalf("save & load mismatch: saved %v loaded %v", sample, loaded)
+	}
+
+	err = db.Erase(0)
+	if err != nil {
+		t.Fatalf("concur.Erase(0) failed: $s", err)
+	}
+
+	err = db.Erase(concur.KeyMax)
+	if err != nil {
+		t.Fatalf("concur.Erase(concur.KeyMax) failed: $s", err)
 	}
 
 }
@@ -159,27 +168,28 @@ func TestKeyList(t *testing.T) {
 	}
 	receivedKeys := make([]uint32, 0)
 	for ok {
+		t.Logf("found key: %v", key)
 		receivedKeys = append(receivedKeys, key)
 		if key == concur.KeyMax {
 			break
 		}
-		key, ok, err = db.SmallestKeyNotLessThan(key+1)
+		key, ok, err = db.SmallestKeyNotLessThan(key + 1)
 		if err != nil {
 			t.Fatalf("concur.SmallestKeyNotLessThan failed: %s", err)
 		}
 	}
-	savedKeys := make([]int, 0)
+	savedKeys := make([]uint32, 0)
 	for _, data := range savedData {
-		savedKeys = append(savedKeys, int(data.key))
+		savedKeys = append(savedKeys, data.key)
 	}
 	rl := len(receivedKeys)
 	sl := len(savedKeys)
 	if rl != sl {
 		t.Fatalf("received key length mismatch: received %v expected %v", rl, sl)
 	}
-	sort.Ints(savedKeys)
+	Uint32Slice(savedKeys).Sort()
 	for i, rk := range receivedKeys {
-		sk := uint32(savedKeys[i])
+		sk := savedKeys[i]
 		if sk != rk {
 			t.Fatalf("received key mismatch: received %v expected %v", rk, sk)
 		}

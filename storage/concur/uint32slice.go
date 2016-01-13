@@ -47,3 +47,6 @@ func (r Uint32Slice) Search(x uint32) int { return SearchUint32s(r, x) }
 
 // Sort is a convenience method for applying sort.Sort to the receiver.
 func (r Uint32Slice) Sort() { sort.Sort(r) }
+
+// Uint32s sorts a slice of uint32 in increasing order.
+func Uint32s(a []uint32) { sort.Sort(Uint32Slice(a)) }
