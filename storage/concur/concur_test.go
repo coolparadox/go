@@ -18,6 +18,7 @@
 package concur_test
 
 import "github.com/coolparadox/go/storage/concur"
+import "github.com/coolparadox/go/sort/uint32slice"
 import "testing"
 import "os"
 import "bytes"
@@ -187,7 +188,7 @@ func TestKeyList(t *testing.T) {
 	if rl != sl {
 		t.Fatalf("received key length mismatch: received %v expected %v", rl, sl)
 	}
-	Uint32Slice(savedKeys).Sort()
+	uint32slice.SortSlice(savedKeys)
 	for i, rk := range receivedKeys {
 		sk := savedKeys[i]
 		if sk != rk {

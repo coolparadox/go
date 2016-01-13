@@ -64,6 +64,7 @@ Document filesystem guidelines for better performance with package concur.
 */
 package concur
 
+import "github.com/coolparadox/go/sort/uint32slice"
 import "path"
 import "errors"
 import "fmt"
@@ -330,7 +331,7 @@ func listKeyComponentsInDir(dir string) ([]uint32, error) {
 	}
 
 	// Sort answer slice before returning it.
-	Uint32Slice(answer).Sort()
+	uint32slice.SortSlice(answer)
 	return answer, nil
 
 }
