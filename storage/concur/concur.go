@@ -272,7 +272,8 @@ const KeyMax = 0xFFFFFFFF
 
 // formatSequence contains characters to be used for mapping between
 // filesystem names and components of keys in base 36 representation.
-// At least 36 characters must be provided in ascending order of representation value.
+// At least 36 characters must be provided in ascending order of representation
+// value.
 const formatSequence = "0123456789abcdefghijklmnopqrstuvwxyz"
 
 // Mapping between characters and positions in formatSequence.
@@ -331,7 +332,7 @@ func listKeyComponentsInDir(dir string) ([]uint32, error) {
 	}
 
 	// Sort answer slice before returning it.
-	uint32slice.SortSlice(answer)
+	uint32slice.SortUint32s(answer)
 	return answer, nil
 
 }
@@ -369,7 +370,6 @@ func composeKey(br *brokenKey) (uint32, error) {
 	of = of || (br[6] == 1 && br[5] == 35 && br[4] == 1 && br[3] == 4 && br[2] == 1 && br[1] > 35)
 	of = of || (br[6] == 1 && br[5] == 35 && br[4] == 1 && br[3] == 4 && br[2] == 1 && br[1] == 35 && br[0] > 3)
 	if of {
-		_ = "breakpoint"
 		return 0, errors.New(fmt.Sprintf("impossible broken key: %v", *br))
 	}
 
@@ -398,7 +398,8 @@ func formatPath(key uint32, baseDir string) string {
 }
 
 // SmallestKeyNotLessThan receives a key and returns it if it exists.
-// If key does not exist, the closest key in ascending order is returned instead.
+// If key does not exist, the closest key in ascending order is returned
+// instead.
 //
 // The bool return value tells if a key was found to be answered.
 func (r Concur) SmallestKeyNotLessThan(key uint32) (uint32, bool, error) {

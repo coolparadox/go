@@ -169,7 +169,7 @@ func TestKeyList(t *testing.T) {
 	}
 	receivedKeys := make([]uint32, 0)
 	for ok {
-		t.Logf("found key: %v", key)
+		//t.Logf("found key: %v", key)
 		receivedKeys = append(receivedKeys, key)
 		if key == concur.KeyMax {
 			break
@@ -188,7 +188,7 @@ func TestKeyList(t *testing.T) {
 	if rl != sl {
 		t.Fatalf("received key length mismatch: received %v expected %v", rl, sl)
 	}
-	uint32slice.SortSlice(savedKeys)
+	uint32slice.SortUint32s(savedKeys)
 	for i, rk := range receivedKeys {
 		sk := savedKeys[i]
 		if sk != rk {

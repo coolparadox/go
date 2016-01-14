@@ -16,6 +16,9 @@
 // along with Concur. If not, see <http://www.gnu.org/licenses/>.
 // Copyright 2015 Rafael Lorandi <coolparadox@gmail.com>
 
+/*
+Package uint32slice is an implementation of sort.Interface for slices of uint32.
+*/
 package uint32slice
 
 import "sort"
@@ -48,5 +51,5 @@ func (r Uint32Slice) Search(x uint32) int { return SearchUint32s(r, x) }
 // Sort is a convenience method for applying sort.Sort to the receiver.
 func (r Uint32Slice) Sort() { sort.Sort(r) }
 
-// SortSlice sorts a slice of uint32 in increasing order.
-func SortSlice (s []uint32) { sort.Sort(Uint32Slice(s)) }
+// SortUint32s sorts a slice of uint32 in increasing order.
+func SortUint32s (s []uint32) { sort.Sort(Uint32Slice(s)) }
