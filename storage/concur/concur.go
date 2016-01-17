@@ -158,17 +158,6 @@ func (r Concur) Put(key uint32, value []byte) error {
 	return nil
 }
 
-// Save creates a key with a new value.
-// The key is automatically assigned and guaranteed to be new.
-//
-// Returns the assigned key.
-func (r Concur) Save(value []byte) (uint32, error) {
-	if !r.initialized {
-		return 0, errors.New("unitialized concur.Concur")
-	}
-	return 0, errors.New("Save() not yet implemented")
-}
-
 // Get retrieves the value associated with a key.
 func (r Concur) Get(key uint32) ([]byte, error) {
 	if !r.initialized {
@@ -192,6 +181,12 @@ func (r Concur) Erase(key uint32) error {
 	err = os.Remove(targetPath)
 	if err != nil {
 		return errors.New(fmt.Sprintf("cannot remove file '%s': %s", targetPath, err))
+	}
+	// Erase full marks up to top level.
+	br := decomposeKey(key)
+	for level := 1; level <= 6; level++ {
+		fullMarkPath := fmt.Sprintf("%s%c%s", keyComponentPath(&br, level, r.dir), os.PathSeparator, "_")
+		_ = os.RemoveAll(fullMarkPath)
 	}
 	return nil
 }
@@ -267,7 +262,7 @@ func Wipe(dir string) error {
 	return nil
 }
 
-// keyMax is the maximum value of a key.
+// KeyMax is the maximum value of a key.
 const KeyMax = 0xFFFFFFFF
 
 // formatSequence contains characters to be used for mapping between
@@ -631,4 +626,80 @@ func keyComponentPath(br *brokenKey, level int, baseDir string) string {
 	}
 	panic(fmt.Sprintf("impossible level value %v", level))
 
+}
+
+func findFreeKeyFromLevel(br *brokenKey, level int, baseDir string) (bool, error) {
+
+	var err error
+	fullMarkPath := fmt.Sprintf("%s%c%s", keyComponentPath(br, level+1, baseDir), os.PathSeparator, "_")
+	_, err = os.Stat(fullMarkPath)
+	if err == nil {
+		// There is a full mark a this level.
+		return false, nil
+	}
+	if !os.IsNotExist(err) {
+		// Cannot verify if full mark exists.
+		return false, err
+	}
+	// Iterate through key components at this level.
+	var kc uint32
+	for kc = 0; kc < 36; kc++ {
+		br[level] = kc
+		targetPath := keyComponentPath(br, level, baseDir)
+		_, err := os.Stat(targetPath)
+		if err == nil {
+			if level > 0 {
+				// Found an existent key component in a non zero level.
+				// Investigate it for a free key.
+				ok, err := findFreeKeyFromLevel(br, level-1, baseDir)
+				if err != nil {
+					return false, err
+				}
+				if !ok {
+					continue
+				}
+				return true, nil
+			} else {
+				// Key component already exists in zero level.
+				continue
+			}
+		}
+		if !os.IsNotExist(err) {
+			return false, err
+		}
+		// Key component does not exist.
+		return true, nil
+	}
+	// Exausted key components; add a full mark here to save future work.
+	err = ioutil.WriteFile(fullMarkPath, nil, 0666)
+	if err != nil {
+		return false, err
+	}
+	br[level] = 0
+	return false, nil
+}
+
+// Save creates a key with a new value.
+// The key is automatically assigned and guaranteed to be new.
+//
+// Returns the assigned key.
+func (r Concur) Save(value []byte) (uint32, error) {
+	if !r.initialized {
+		return 0, errors.New("unitialized concur.Concur")
+	}
+	var err error
+	var br brokenKey
+	var ok bool = false
+	for !ok {
+		ok, err = findFreeKeyFromLevel(&br, 6, r.dir)
+		if err != nil {
+			return 0, errors.New(fmt.Sprintf("cannot find free key: %s", err))
+		}
+	}
+	key, err := composeKey(&br)
+	if err != nil {
+		return 0, errors.New(fmt.Sprintf("no more keys available."))
+	}
+	err = r.Put(key, value)
+	return key, err
 }

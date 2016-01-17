@@ -72,7 +72,7 @@ func TestNewEmpty(t *testing.T) {
 
 }
 
-func TestSaveAs(t *testing.T) {
+func TestPut(t *testing.T) {
 	sample := make([]byte, 100)
 	for i, _ := range sample {
 		sample[i] = byte(rand.Intn(256))
@@ -123,23 +123,33 @@ type savedItem struct {
 var savedData []savedItem
 
 func TestSaveMany(t *testing.T) {
+	var err error
 	savedData = make([]savedItem, howManySaves)
 	savedKeys := make(map[uint32]interface{})
 	for i := uint(0); i < howManySaves; i++ {
+		value := byte(i % 256)
 		var key uint32
-		for {
-			key = uint32(rand.Int63())
-			_, ok := savedKeys[key]
-			if !ok {
-				break
+		if i%2 == 0 {
+			// test concur.Put
+			for {
+				key = uint32(rand.Int63())
+				_, ok := savedKeys[key]
+				if !ok {
+					break
+				}
+			}
+			err = db.Put(key, []byte{value})
+			if err != nil {
+				t.Fatalf("concur.Put failed: %s", err)
+			}
+		} else {
+			// test concur.Save
+			key, err = db.Save([]byte{value})
+			if err != nil {
+				t.Fatalf("concur.Save failed: %s", err)
 			}
 		}
 		savedKeys[key] = nil
-		value := byte(key % 256)
-		err := db.Put(key, []byte{value})
-		if err != nil {
-			t.Fatalf("concur.Put failed: %s", err)
-		}
 		savedData[i].key = key
 		savedData[i].value[0] = value
 	}
