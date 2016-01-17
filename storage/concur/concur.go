@@ -21,27 +21,33 @@ generation.
 
 Basics
 
-Use New to create (or open) a collection of key / value pairs in the filesystem.
-The collection can then be managed by methods of the collection handler.
+Use New to create or open a collection of key/value pairs in the
+filesystem. The collection can then be managed by methods of the collection
+handler.
 
-	myData := byte[]{0,1,2,3,4,5,6,7,8,9}
-	myCollection, _ := concur.New("/path/to/my/collection");
-	key, _ := myCollection.Save(myData) // store myData in a new key
-	...
-	myData2, _ := myCollection.Get(key) // retrieve stored value
-	...
-	myCollection.Erase(key) // remove a key
+	db, _ := concur.New("/path/to/my/collection")
+	key, _ := db.Save(byte[]{1,3,5,7,9}) // store data in a new key
+	val, _ := db.Load(key) // retrieve value of a key
+	db.Put(key, byte[]{0,2,4,6,8}) // update existent key
+	db.Erase(key) // remove a key
 
 Issues
 
-Keys are 32 bit unsigned integers. Values are byte sequences of arbitrary length.
+Keys are 32 bit unsigned integers. Values are byte sequences of arbitrary
+length.
 
-Apart from other storage implementations that map a single file as the database,
-this package takes an experimental, more naive (and simpler) approach where keys
-are managed using filesystem subdirectories. Therefore the filesystem chosen for
-storage is the real engine that maps keys to values, and their designers are the
-ones who must take credit if this package happens to achieve satisfactory
+Apart from other storage implementations that map a single file as the
+database, this package takes an experimental approach where keys are managed
+using filesystem subdirectories. Therefore the filesystem chosen for storage
+is the real engine that maps keys to values, and their designers are the ones
+who must take credit if this package happens to achieve satisfactory
 performance.
+
+Although concur write methods commit changes to filesystem immediately on
+successful return, the operating system can make use of memory buffers for
+increasing performance of filesystem access. Users may need to manually
+flush updates to disk (eg sync, umount) to guarantee that all updates to the
+collection are written to disk.
 
 Wipe method can take a long time to return.
 
@@ -169,6 +175,11 @@ func (r Concur) Get(key uint32) ([]byte, error) {
 		return nil, errors.New(fmt.Sprintf("cannot read file '%s': %s", sourcePath, err))
 	}
 	return buf, nil
+}
+
+// Load is a synonym for Get.
+func (r Concur) Load(key uint32) ([]byte, error) {
+	return r.Get(key)
 }
 
 // Erase erases a key.
@@ -392,7 +403,7 @@ func formatPath(key uint32, baseDir string) string {
 	return keyComponentPath(&br, 0, baseDir)
 }
 
-// SmallestKeyNotLessThan receives a key and returns it if it exists.
+// SmallestKeyNotLessThan takes a key and returns it if it exists.
 // If key does not exist, the closest key in ascending order is returned
 // instead.
 //

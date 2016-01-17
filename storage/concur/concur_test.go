@@ -83,9 +83,9 @@ func TestPut(t *testing.T) {
 	if err != nil {
 		t.Fatalf("concur.Put failed: %s", err)
 	}
-	loaded, err := db.Get(0)
+	loaded, err := db.Load(0)
 	if err != nil {
-		t.Fatalf("concur.Get failed: %s", err)
+		t.Fatalf("concur.Load failed: %s", err)
 	}
 	if !bytes.Equal(loaded, sample) {
 		t.Fatalf("save & load mismatch: saved %v loaded %v", sample, loaded)
@@ -95,9 +95,9 @@ func TestPut(t *testing.T) {
 	if err != nil {
 		t.Fatalf("concur.Put failed: %s", err)
 	}
-	loaded, err = db.Get(concur.KeyMax)
+	loaded, err = db.Load(concur.KeyMax)
 	if err != nil {
-		t.Fatalf("concur.Get failed: %s", err)
+		t.Fatalf("concur.Load failed: %s", err)
 	}
 	if !bytes.Equal(loaded, sample) {
 		t.Fatalf("save & load mismatch: saved %v loaded %v", sample, loaded)
@@ -158,9 +158,9 @@ func TestSaveMany(t *testing.T) {
 func TestLoadMany(t *testing.T) {
 	for i := uint(0); i < howManySaves; i++ {
 		key := savedData[i].key
-		loaded, err := db.Get(key)
+		loaded, err := db.Load(key)
 		if err != nil {
-			t.Fatalf("concur.Get failed: %s", err)
+			t.Fatalf("concur.Load failed: %s", err)
 		}
 		saved := savedData[i].value
 		if loaded[0] != saved[0] {
