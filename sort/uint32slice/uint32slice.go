@@ -17,7 +17,8 @@
 // Copyright 2015 Rafael Lorandi <coolparadox@gmail.com>
 
 /*
-Package uint32slice is an implementation of sort.Interface for slices of uint32.
+Package uint32slice is an implementation of sort.Interface for slices of
+uint32s.
 */
 package uint32slice
 
@@ -37,9 +38,9 @@ func (r Uint32Slice) Less(i, j int) bool { return r[i] < r[j] }
 // Swap swaps the elements with indexes i and j.
 func (r Uint32Slice) Swap(i, j int) { r[i], r[j] = r[j], r[i] }
 
-// SearchUint32s searches for x in a sorted slice of uint32s and returns the index
-// as specified by sort.Search. The return value is the index to insert x if x
-// is not present (it could be len(a)).
+// SearchUint32s searches for x in a sorted slice of uint32s and returns the
+// index as specified by sort.Search. The return value is the index to insert
+// x if x is not present (it could be len(a)).
 // The slice must be sorted in ascending order.
 func SearchUint32s(a []uint32, x uint32) int {
 	return sort.Search(len(a), func(i int) bool { return a[i] >= x })

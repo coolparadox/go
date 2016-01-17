@@ -50,3 +50,6 @@ func (r RuneSlice) Search(x rune) int { return SearchRunes(r, x) }
 
 // Sort is a convenience method for applying sort.Sort to the receiver.
 func (r RuneSlice) Sort() { sort.Sort(r) }
+
+// SortRunes sorts a slice of runes in increasing order.
+func SortRunes (s []rune) { sort.Sort(RuneSlice(s)) }
