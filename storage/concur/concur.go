@@ -700,15 +700,19 @@ func (r Concur) Save(value []byte) (uint32, error) {
 	}
 	var err error
 	var br brokenKey
-	var ok bool = false
-	for !ok {
-		ok, err = findFreeKeyFromLevel(&br, 6, r.dir)
-		if err != nil {
-			return 0, errors.New(fmt.Sprintf("cannot find free key: %s", err))
-		}
+	ok, err := findFreeKeyFromLevel(&br, 6, r.dir)
+	if err != nil {
+		return 0, errors.New(fmt.Sprintf("cannot find free key: %s", err))
+	}
+	if !ok {
+		// findFreeKeyFromLevel() is supposed to always find a (broken) key,
+		// even impossible ones.
+		panic("Save() weirdness: no free broken key and no erros?!")
 	}
 	key, err := composeKey(&br)
 	if err != nil {
+		// As free keys are searched in ascending order, assume impossible
+		// ones indicate exaustion of key space.
 		return 0, errors.New(fmt.Sprintf("no more keys available."))
 	}
 	err = r.Put(key, value)
