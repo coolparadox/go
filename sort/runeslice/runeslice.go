@@ -1,4 +1,4 @@
-// Copyright 2015 Rafael Lorandi <coolparadox@gmail.com>
+// Copyright 2016 Rafael Lorandi <coolparadox@gmail.com>
 // This file is part of runeslice, an implementation of sort.Interface
 // for slices of runes.
 //

@@ -1,4 +1,4 @@
-// Copyright 2015 Rafael Lorandi <coolparadox@gmail.com>
+// Copyright 2016 Rafael Lorandi <coolparadox@gmail.com>
 // This file is part of Concur, a generic value storage library
 // for the Go language.
 //
@@ -14,7 +14,6 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Concur. If not, see <http://www.gnu.org/licenses/>.
-// Copyright 2015 Rafael Lorandi <coolparadox@gmail.com>
 
 /*
 Package uint32slice is an implementation of sort.Interface for slices of
