@@ -88,9 +88,9 @@ type Concur struct {
 	dir         string
 }
 
-// concurLabel is the file checked for existence of a concur database in a
+// concurMarkLabel is the file checked for existence of a concur database in a
 // directory.
-const concurLabel string = ".concur"
+const concurMarkLabel string = ".concur"
 
 // New creates a Concur value.
 //
@@ -109,19 +109,19 @@ func New(dir string) (Concur, error) {
 	if !finfo.IsDir() {
 		return Concur{}, errors.New(fmt.Sprintf("dir '%s' is not a directory", dir))
 	}
-	concurFile := path.Join(dir, concurLabel)
+	concurMarkFile := path.Join(dir, concurMarkLabel)
 	concurFileExists := true
-	finfo, err = os.Stat(concurFile)
+	finfo, err = os.Stat(concurMarkFile)
 	if err != nil {
 		if os.IsNotExist(err) {
 			concurFileExists = false
 		} else {
-			return Concur{}, errors.New(fmt.Sprintf("cannot check for '%s' existence: %s", concurFile, err))
+			return Concur{}, errors.New(fmt.Sprintf("cannot check for '%s' existence: %s", concurMarkFile, err))
 		}
 	}
 	if concurFileExists {
 		if finfo.IsDir() {
-			return Concur{}, errors.New(fmt.Sprintf("concur db mark file '%s' is a directory", concurFile))
+			return Concur{}, errors.New(fmt.Sprintf("concur db mark file '%s' is a directory", concurMarkFile))
 		}
 	} else {
 		file, err := os.Open(dir)
@@ -133,9 +133,9 @@ func New(dir string) (Concur, error) {
 		if err != io.EOF {
 			return Concur{}, errors.New(fmt.Sprintf("dir '%s' is not empty and is not a concur db", dir))
 		}
-		_, err = os.Create(concurFile)
+		_, err = os.Create(concurMarkFile)
 		if err != nil {
-			return Concur{}, errors.New(fmt.Sprintf("cannot create concur db mark file '%s'", concurFile))
+			return Concur{}, errors.New(fmt.Sprintf("cannot create concur db mark file '%s'", concurMarkFile))
 		}
 		log.Printf("concur database initialized in '%s'", dir)
 	}
@@ -145,12 +145,29 @@ func New(dir string) (Concur, error) {
 	}, nil
 }
 
-// Put creates (or updates) a key with a new value.
-func (r Concur) Put(key uint32, value []byte) error {
+// concurLabelExists answers if there is a concur label file at the top level
+// of the directory pointed by an initialized collection.
+func (r Concur) concurLabelExists() error {
 	if !r.initialized {
 		return errors.New("unitialized concur.Concur")
 	}
-	var err error
+	concurMarkFile := path.Join(r.dir, concurMarkLabel)
+	_, err := os.Stat(concurMarkFile)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return errors.New(fmt.Sprintf("cannot check for database label file: %s", err))
+		}
+		return errors.New("missing database label file")
+	}
+	return nil
+}
+
+// Put creates (or updates) a key with a new value.
+func (r Concur) Put(key uint32, value []byte) error {
+	err := r.concurLabelExists()
+	if err != nil {
+		return err
+	}
 	targetPath := formatPath(key, r.dir)
 	targetDir := path.Dir(targetPath)
 	err = os.MkdirAll(targetDir, 0777)
@@ -166,8 +183,9 @@ func (r Concur) Put(key uint32, value []byte) error {
 
 // Get retrieves the value associated with a key.
 func (r Concur) Get(key uint32) ([]byte, error) {
-	if !r.initialized {
-		return nil, errors.New("unitialized concur.Concur")
+	err := r.concurLabelExists()
+	if err != nil {
+		return nil, err
 	}
 	sourcePath := formatPath(key, r.dir)
 	buf, err := ioutil.ReadFile(sourcePath)
@@ -184,10 +202,10 @@ func (r Concur) Load(key uint32) ([]byte, error) {
 
 // Erase erases a key.
 func (r Concur) Erase(key uint32) error {
-	if !r.initialized {
-		return errors.New("unitialized concur.Concur")
+	err := r.concurLabelExists()
+	if err != nil {
+		return err
 	}
-	var err error
 	targetPath := formatPath(key, r.dir)
 	err = os.Remove(targetPath)
 	if err != nil {
@@ -204,10 +222,10 @@ func (r Concur) Erase(key uint32) error {
 
 // Exists verifies if a key exists.
 func (r Concur) Exists(key uint32) (bool, error) {
-	if !r.initialized {
-		return false, errors.New("unitialized concur.Concur")
+	err := r.concurLabelExists()
+	if err != nil {
+		return false, err
 	}
-	var err error
 	targetPath := formatPath(key, r.dir)
 	targetPathExists := true
 	_, err = os.Stat(targetPath)
@@ -237,22 +255,25 @@ func Wipe(dir string) error {
 		return nil
 	}
 	file.Close()
-	concurFile := path.Join(dir, concurLabel)
-	concurFileExists := true
-	_, err = os.Stat(concurFile)
-	if err != nil {
-		if os.IsNotExist(err) {
-			concurFileExists = false
-		} else {
-			return errors.New(fmt.Sprintf("cannot check for '%s' existence: %s", concurFile, err))
+	concurMarkFile := path.Join(dir, concurMarkLabel)
+	concurWipingLabel := fmt.Sprintf("%s.wiping", concurMarkLabel)
+	concurWipingFile := path.Join(dir, concurWipingLabel)
+	_, err = os.Stat(concurMarkFile)
+	if err != nil && !os.IsNotExist(err) {
+		return errors.New(fmt.Sprintf("cannot check for concur mark file: %s", err))
+	}
+	if err == nil {
+		err = os.Rename(concurMarkFile, concurWipingFile)
+		if err != nil {
+			return errors.New(fmt.Sprintf("cannot mark collection for wiping: %s", err))
 		}
 	}
-	if !concurFileExists {
-		return errors.New(fmt.Sprintf("directory '%s' does not contain a concur collection", dir))
-	}
-	err = os.Remove(concurFile)
+	_, err = os.Stat(concurWipingFile)
 	if err != nil {
-		return errors.New(fmt.Sprintf("cannot remove '%s': %s", concurFile, err))
+		if !os.IsNotExist(err) {
+			return errors.New(fmt.Sprintf("cannot check for wiping mark file: %s", err))
+		}
+		return errors.New("missing wiping mark file; aborting")
 	}
 	file, err = os.Open(dir)
 	if err != nil {
@@ -264,11 +285,18 @@ func Wipe(dir string) error {
 		return errors.New(fmt.Sprintf("cannot read directory '%s': %s", dir, err))
 	}
 	for _, name := range names {
+		if name == concurWipingLabel {
+			continue
+		}
 		removePath := path.Join(dir, name)
 		err := os.RemoveAll(removePath)
 		if err != nil {
 			return errors.New(fmt.Sprintf("cannot remove '%s': %s", removePath, err))
 		}
+	}
+	err = os.Remove(concurWipingFile)
+	if err != nil {
+		return errors.New(fmt.Sprintf("cannot remove wiping mark file: %s", err))
 	}
 	return nil
 }
@@ -411,8 +439,9 @@ func formatPath(key uint32, baseDir string) string {
 func (r Concur) SmallestKeyNotLessThan(key uint32) (uint32, bool, error) {
 
 	// Check for unitialized receiver.
-	if !r.initialized {
-		return 0, false, errors.New("unitialized concur.Concur")
+	err := r.concurLabelExists()
+	if err != nil {
+		return 0, false, err
 	}
 
 	// minimum represents the smallest admissible value to be answered.
@@ -695,10 +724,10 @@ func findFreeKeyFromLevel(br *brokenKey, level int, baseDir string) (bool, error
 //
 // Returns the assigned key.
 func (r Concur) Save(value []byte) (uint32, error) {
-	if !r.initialized {
-		return 0, errors.New("unitialized concur.Concur")
+	err := r.concurLabelExists()
+	if err != nil {
+		return 0, err
 	}
-	var err error
 	var br brokenKey
 	ok, err := findFreeKeyFromLevel(&br, 6, r.dir)
 	if err != nil {
