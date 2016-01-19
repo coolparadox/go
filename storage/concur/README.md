@@ -43,10 +43,6 @@ Wipe method can take a long time to return.
 Concurrent access to a collection is not yet thought of, and can be a fruitful
 source of weirdness.
 
-If wipe method fails or is interrupted before termination, subsequent calls to
-the same directory will fail due to detection of non empty, non concur storage
-directory. If this happens, remove directory contents manually as a workaround.
-
 
 ### Wish List
 
