@@ -76,68 +76,9 @@ func composeKey(br *brokenKey) (uint32, error) {
 	return key, nil
 }
 
-// formatPath converts a key to a relative filesystem path.
-func formatPath(key uint32, baseDir string) string {
-	br := decomposeKey(key)
-	return keyComponentPath(&br, 0, baseDir)
-}
-
-// smallestKeyNotLessThan takes broken key components, depth level and a base
-// directory to compose the path to a subdirectory in the filesystem. Then it
-// returns the smallest key that exists under this subdirectory.
-func smallestKeyNotLessThanInLevel(br *brokenKey, level int, baseDir string) (brokenKey, bool, error) {
-
-	// Find out where keys will be searched from.
-	// This can be in any valid depth level.
-	kcDir := keyComponentPath(br, level+1, baseDir)
-
-	// Iterate through key components of this depth level.
-	// Assume components are sorted in ascending order.
-	kcs, err := listKeyComponentsInDir(kcDir)
-	if err != nil {
-		return brokenKey{0, 0, 0, 0, 0, 0, 0}, false, errors.New(fmt.Sprintf("cannot list key components in '%s': %s", kcDir, err))
-	}
-	for _, kc := range kcs {
-
-		// Discard component if it's smaller than the reference.
-		if kc < br[level] {
-			continue
-		}
-
-		if level <= 0 {
-
-			// Found a matching component in the deepest level.
-			return brokenKey{kc, br[1], br[2], br[3], br[4], br[5], br[6]}, true, nil
-
-		} else {
-
-			// Found a matching component in not the deepest level.
-			// Answer the smallest key under the next depth level from this component.
-			brn := *br
-			for i := 0; i < level; i++ {
-				brn[i] = 0
-			}
-			brn[level] = kc
-			brf, found, err := smallestKeyNotLessThanInLevel(&brn, level-1, baseDir)
-			if err != nil {
-				return brokenKey{0, 0, 0, 0, 0, 0, 0}, false, err
-			}
-			if found {
-				return brf, true, nil
-			}
-
-		}
-
-	}
-
-	// Search exausted and no keys found.
-	return brokenKey{0, 0, 0, 0, 0, 0, 0}, false, nil
-
-}
-
 // keyComponentPath mounts the path to a subdirectory for key components
 // of a specific depth level.
-func keyComponentPath(br *brokenKey, level int, baseDir string) string {
+func keyComponentPath(br brokenKey, level int, baseDir string) string {
 	switch level {
 
 	case 0:
@@ -249,10 +190,74 @@ func keyComponentPath(br *brokenKey, level int, baseDir string) string {
 
 }
 
+// formatPath converts a key to a path in the filesystem.
+// Returns:
+// - a directory in filesystem for holding the value file
+// - a character for naming the value file under the directory
+// - key components, if the caller is interested
+func formatPath(key uint32, baseDir string) (string, rune, brokenKey) {
+	br := decomposeKey(key)
+	dir := keyComponentPath(br, 1, baseDir)
+	return dir, formatMap[br[0]], br
+}
+
+// smallestKeyNotLessThan takes broken key components, depth level and a base
+// directory to compose the path to a subdirectory in the filesystem. Then it
+// returns the smallest key that exists under this subdirectory.
+func smallestKeyNotLessThanInLevel(br *brokenKey, level int, baseDir string) (brokenKey, bool, error) {
+
+	// Find out where keys will be searched from.
+	// This can be in any valid depth level.
+	kcDir := keyComponentPath(*br, level+1, baseDir)
+
+	// Iterate through key components of this depth level.
+	// Assume components are sorted in ascending order.
+	kcs, err := listKeyComponentsInDir(kcDir)
+	if err != nil {
+		return brokenKey{0, 0, 0, 0, 0, 0, 0}, false, errors.New(fmt.Sprintf("cannot list key components in '%s': %s", kcDir, err))
+	}
+	for _, kc := range kcs {
+
+		// Discard component if it's smaller than the reference.
+		if kc < br[level] {
+			continue
+		}
+
+		if level <= 0 {
+
+			// Found a matching component in the deepest level.
+			return brokenKey{kc, br[1], br[2], br[3], br[4], br[5], br[6]}, true, nil
+
+		} else {
+
+			// Found a matching component in not the deepest level.
+			// Answer the smallest key under the next depth level from this component.
+			brn := *br
+			for i := 0; i < level; i++ {
+				brn[i] = 0
+			}
+			brn[level] = kc
+			brf, found, err := smallestKeyNotLessThanInLevel(&brn, level-1, baseDir)
+			if err != nil {
+				return brokenKey{0, 0, 0, 0, 0, 0, 0}, false, err
+			}
+			if found {
+				return brf, true, nil
+			}
+
+		}
+
+	}
+
+	// Search exausted and no keys found.
+	return brokenKey{0, 0, 0, 0, 0, 0, 0}, false, nil
+
+}
+
 func findFreeKeyFromLevel(br *brokenKey, level int, baseDir string) (bool, error) {
 
 	var err error
-	fullMarkPath := fmt.Sprintf("%s%c%s", keyComponentPath(br, level+1, baseDir), os.PathSeparator, "_")
+	fullMarkPath := fmt.Sprintf("%s%c%s", keyComponentPath(*br, level+1, baseDir), os.PathSeparator, "_")
 	_, err = os.Stat(fullMarkPath)
 	if err == nil {
 		// There is a full mark a this level.
@@ -266,7 +271,7 @@ func findFreeKeyFromLevel(br *brokenKey, level int, baseDir string) (bool, error
 	var kc uint32
 	for kc = 0; kc < 36; kc++ {
 		br[level] = kc
-		targetPath := keyComponentPath(br, level, baseDir)
+		targetPath := keyComponentPath(*br, level, baseDir)
 		_, err := os.Stat(targetPath)
 		if err == nil {
 			if level > 0 {

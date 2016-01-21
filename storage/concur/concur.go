@@ -163,12 +163,12 @@ func (r Concur) SaveAs(key uint32, value []byte) error {
 	if err != nil {
 		return err
 	}
-	targetPath := formatPath(key, r.dir)
-	targetDir := path.Dir(targetPath)
+	targetDir, targetChar, _ := formatPath(key, r.dir)
 	err = os.MkdirAll(targetDir, 0777)
 	if err != nil {
 		return errors.New(fmt.Sprintf("cannot create directory '%s': %s", targetDir, err))
 	}
+	targetPath := fmt.Sprintf("%s%c%c", targetDir, os.PathSeparator, targetChar)
 	err = ioutil.WriteFile(targetPath, value, 0666)
 	if err != nil {
 		return errors.New(fmt.Sprintf("cannot write file '%s': %s", targetPath, err))
@@ -182,7 +182,8 @@ func (r Concur) Load(key uint32) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	sourcePath := formatPath(key, r.dir)
+	sourceDir, sourceChar, _ := formatPath(key, r.dir)
+	sourcePath := fmt.Sprintf("%s%c%c", sourceDir, os.PathSeparator, sourceChar)
 	buf, err := ioutil.ReadFile(sourcePath)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("cannot read file '%s': %s", sourcePath, err))
@@ -196,15 +197,15 @@ func (r Concur) Erase(key uint32) error {
 	if err != nil {
 		return err
 	}
-	targetPath := formatPath(key, r.dir)
+	targetDir, targetChar, br := formatPath(key, r.dir)
+	targetPath := fmt.Sprintf("%s%c%c", targetDir, os.PathSeparator, targetChar)
 	err = os.Remove(targetPath)
 	if err != nil {
 		return errors.New(fmt.Sprintf("cannot remove file '%s': %s", targetPath, err))
 	}
 	// Erase full marks up to top level.
-	br := decomposeKey(key)
 	for level := 1; level <= 6; level++ {
-		fullMarkPath := fmt.Sprintf("%s%c%s", keyComponentPath(&br, level, r.dir), os.PathSeparator, "_")
+		fullMarkPath := fmt.Sprintf("%s%c%s", keyComponentPath(br, level, r.dir), os.PathSeparator, "_")
 		_ = os.RemoveAll(fullMarkPath)
 	}
 	return nil
@@ -216,17 +217,16 @@ func (r Concur) Exists(key uint32) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	targetPath := formatPath(key, r.dir)
-	targetPathExists := true
+	targetDir, targetChar, _ := formatPath(key, r.dir)
+	targetPath := fmt.Sprintf("%s%c%c", targetDir, os.PathSeparator, targetChar)
 	_, err = os.Stat(targetPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			targetPathExists = false
-		} else {
-			return false, errors.New(fmt.Sprintf("cannot check for '%s' existence: %s", targetPath, err))
-		}
+	if err == nil {
+		return true, nil
 	}
-	return targetPathExists, nil
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, errors.New(fmt.Sprintf("cannot check for '%s' existence: %s", targetPath, err))
 }
 
 // Wipe removes a collection from the filesystem.
