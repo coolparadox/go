@@ -28,7 +28,7 @@ handler.
 	db, _ := concur.New("/path/to/my/collection")
 	key, _ := db.Save(byte[]{1,3,5,7,9}) // store data in a new key
 	val, _ := db.Load(key) // retrieve value of a key
-	db.Put(key, byte[]{0,2,4,6,8}) // update existent key
+	db.SaveAs(key, byte[]{0,2,4,6,8}) // update existent key
 	db.Erase(key) // remove a key
 
 Issues
@@ -157,8 +157,8 @@ func (r Concur) concurLabelExists() error {
 	return nil
 }
 
-// Put creates (or updates) a key with a new value.
-func (r Concur) Put(key uint32, value []byte) error {
+// SaveAs creates (or updates) a key with a new value.
+func (r Concur) SaveAs(key uint32, value []byte) error {
 	err := r.concurLabelExists()
 	if err != nil {
 		return err
@@ -176,8 +176,8 @@ func (r Concur) Put(key uint32, value []byte) error {
 	return nil
 }
 
-// Get retrieves the value associated with a key.
-func (r Concur) Get(key uint32) ([]byte, error) {
+// Load retrieves the value associated with a key.
+func (r Concur) Load(key uint32) ([]byte, error) {
 	err := r.concurLabelExists()
 	if err != nil {
 		return nil, err
@@ -188,11 +188,6 @@ func (r Concur) Get(key uint32) ([]byte, error) {
 		return nil, errors.New(fmt.Sprintf("cannot read file '%s': %s", sourcePath, err))
 	}
 	return buf, nil
-}
-
-// Load is a synonym for Get.
-func (r Concur) Load(key uint32) ([]byte, error) {
-	return r.Get(key)
 }
 
 // Erase erases a key.
@@ -739,6 +734,6 @@ func (r Concur) Save(value []byte) (uint32, error) {
 		// ones indicate exaustion of key space.
 		return 0, errors.New(fmt.Sprintf("no more keys available."))
 	}
-	err = r.Put(key, value)
+	err = r.SaveAs(key, value)
 	return key, err
 }

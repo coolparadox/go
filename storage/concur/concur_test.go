@@ -72,16 +72,16 @@ func TestNewEmpty(t *testing.T) {
 
 }
 
-func TestPut(t *testing.T) {
+func TestSaveAs(t *testing.T) {
 	sample := make([]byte, 100)
 	for i, _ := range sample {
 		sample[i] = byte(rand.Intn(256))
 	}
 	var err error
 
-	err = db.Put(0, sample)
+	err = db.SaveAs(0, sample)
 	if err != nil {
-		t.Fatalf("concur.Put failed: %s", err)
+		t.Fatalf("concur.SaveAs failed: %s", err)
 	}
 	loaded, err := db.Load(0)
 	if err != nil {
@@ -91,9 +91,9 @@ func TestPut(t *testing.T) {
 		t.Fatalf("save & load mismatch: saved %v loaded %v", sample, loaded)
 	}
 
-	err = db.Put(concur.KeyMax, sample)
+	err = db.SaveAs(concur.KeyMax, sample)
 	if err != nil {
-		t.Fatalf("concur.Put failed: %s", err)
+		t.Fatalf("concur.SaveAs failed: %s", err)
 	}
 	loaded, err = db.Load(concur.KeyMax)
 	if err != nil {
@@ -130,7 +130,7 @@ func TestSaveMany(t *testing.T) {
 		value := byte(i % 256)
 		var key uint32
 		if i%2 == 0 {
-			// test concur.Put
+			// test concur.SaveAs
 			for {
 				key = uint32(rand.Int63())
 				_, ok := savedKeys[key]
@@ -138,9 +138,9 @@ func TestSaveMany(t *testing.T) {
 					break
 				}
 			}
-			err = db.Put(key, []byte{value})
+			err = db.SaveAs(key, []byte{value})
 			if err != nil {
-				t.Fatalf("concur.Put failed: %s", err)
+				t.Fatalf("concur.SaveAs failed: %s", err)
 			}
 		} else {
 			// test concur.Save
