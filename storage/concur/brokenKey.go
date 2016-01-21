@@ -17,103 +17,10 @@
 
 package concur
 
-import "github.com/coolparadox/go/sort/uint32slice"
-import "path"
 import "errors"
 import "fmt"
 import "os"
 import "io/ioutil"
-
-// concurMarkLabel is the file checked for existence of a concur database in a
-// directory.
-const concurMarkLabel string = ".concur"
-
-// concurLabelExists answers if there is a concur label file at the top level
-// of the directory pointed by an initialized collection.
-func (r Concur) concurLabelExists() error {
-	if !r.initialized {
-		return errors.New("unitialized concur.Concur")
-	}
-	concurMarkFile := path.Join(r.dir, concurMarkLabel)
-	_, err := os.Stat(concurMarkFile)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return errors.New(fmt.Sprintf("cannot check for database label file: %s", err))
-		}
-		return errors.New("missing database label file")
-	}
-	return nil
-}
-
-// KeyMax is the maximum value of a key.
-const KeyMax = 0xFFFFFFFF
-
-// formatSequence contains characters to be used for mapping between
-// filesystem names and components of keys in base 36 representation.
-// At least 36 characters must be provided in ascending order of representation
-// value.
-const formatSequence = "0123456789abcdefghijklmnopqrstuvwxyz"
-
-// Mapping between characters and positions in formatSequence.
-var (
-	formatMap map[uint32]rune
-	parseMap  map[rune]uint32
-)
-
-func init() {
-
-	// Initialize key component character mapping.
-	if len(formatSequence) < 36 {
-		panic("missing format characters")
-	}
-	formatMap = make(map[uint32]rune, 36)
-	parseMap = make(map[rune]uint32, 36)
-	for i := 0; i < 36; i++ {
-		key := rune(formatSequence[i])
-		formatMap[uint32(i)] = key
-		parseMap[key] = uint32(i)
-	}
-}
-
-// listKeyComponentsInDir returns all key components found in a subdirectory,
-// sorted in ascending order.
-func listKeyComponentsInDir(dir string) ([]uint32, error) {
-
-	answer := make([]uint32, 0, 36)
-
-	// Iterate through all names in directory.
-	var err error
-	f, err := os.Open(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return answer, nil
-		}
-		return nil, errors.New(fmt.Sprintf("cannot open directory '%s': %s", dir, err))
-	}
-	defer f.Close()
-	names, err := f.Readdirnames(0)
-	if err != nil {
-		return nil, errors.New(fmt.Sprintf("cannot read directory '%s': %s", dir, err))
-	}
-	for _, name := range names {
-
-		// If name is a key character, store its component value for answer.
-		if len(name) > 1 {
-			continue
-		}
-		char := rune(name[0])
-		component, ok := parseMap[char]
-		if !ok {
-			continue
-		}
-		answer = append(answer, component)
-	}
-
-	// Sort answer slice before returning it.
-	uint32slice.SortUint32s(answer)
-	return answer, nil
-
-}
 
 // brokenKey is a representation of a (uint32) key in base 36 components.
 type brokenKey [7]uint32
@@ -231,10 +138,6 @@ func smallestKeyNotLessThanInLevel(br *brokenKey, level int, baseDir string) (br
 // keyComponentPath mounts the path to a subdirectory for key components
 // of a specific depth level.
 func keyComponentPath(br *brokenKey, level int, baseDir string) string {
-	var r [7]rune
-	for i, c := range br {
-		r[i] = formatMap[c]
-	}
 	switch level {
 
 	case 0:
@@ -242,19 +145,19 @@ func keyComponentPath(br *brokenKey, level int, baseDir string) string {
 			"%s%c%c%c%c%c%c%c%c%c%c%c%c%c%c",
 			baseDir,
 			os.PathSeparator,
-			r[6],
+			formatMap[br[6]],
 			os.PathSeparator,
-			r[5],
+			formatMap[br[5]],
 			os.PathSeparator,
-			r[4],
+			formatMap[br[4]],
 			os.PathSeparator,
-			r[3],
+			formatMap[br[3]],
 			os.PathSeparator,
-			r[2],
+			formatMap[br[2]],
 			os.PathSeparator,
-			r[1],
+			formatMap[br[1]],
 			os.PathSeparator,
-			r[0],
+			formatMap[br[0]],
 		)
 
 	case 1:
@@ -262,17 +165,17 @@ func keyComponentPath(br *brokenKey, level int, baseDir string) string {
 			"%s%c%c%c%c%c%c%c%c%c%c%c%c",
 			baseDir,
 			os.PathSeparator,
-			r[6],
+			formatMap[br[6]],
 			os.PathSeparator,
-			r[5],
+			formatMap[br[5]],
 			os.PathSeparator,
-			r[4],
+			formatMap[br[4]],
 			os.PathSeparator,
-			r[3],
+			formatMap[br[3]],
 			os.PathSeparator,
-			r[2],
+			formatMap[br[2]],
 			os.PathSeparator,
-			r[1],
+			formatMap[br[1]],
 		)
 
 	case 2:
@@ -280,15 +183,15 @@ func keyComponentPath(br *brokenKey, level int, baseDir string) string {
 			"%s%c%c%c%c%c%c%c%c%c%c",
 			baseDir,
 			os.PathSeparator,
-			r[6],
+			formatMap[br[6]],
 			os.PathSeparator,
-			r[5],
+			formatMap[br[5]],
 			os.PathSeparator,
-			r[4],
+			formatMap[br[4]],
 			os.PathSeparator,
-			r[3],
+			formatMap[br[3]],
 			os.PathSeparator,
-			r[2],
+			formatMap[br[2]],
 		)
 
 	case 3:
@@ -296,13 +199,13 @@ func keyComponentPath(br *brokenKey, level int, baseDir string) string {
 			"%s%c%c%c%c%c%c%c%c",
 			baseDir,
 			os.PathSeparator,
-			r[6],
+			formatMap[br[6]],
 			os.PathSeparator,
-			r[5],
+			formatMap[br[5]],
 			os.PathSeparator,
-			r[4],
+			formatMap[br[4]],
 			os.PathSeparator,
-			r[3],
+			formatMap[br[3]],
 		)
 
 	case 4:
@@ -310,11 +213,11 @@ func keyComponentPath(br *brokenKey, level int, baseDir string) string {
 			"%s%c%c%c%c%c%c",
 			baseDir,
 			os.PathSeparator,
-			r[6],
+			formatMap[br[6]],
 			os.PathSeparator,
-			r[5],
+			formatMap[br[5]],
 			os.PathSeparator,
-			r[4],
+			formatMap[br[4]],
 		)
 
 	case 5:
@@ -322,9 +225,9 @@ func keyComponentPath(br *brokenKey, level int, baseDir string) string {
 			"%s%c%c%c%c",
 			baseDir,
 			os.PathSeparator,
-			r[6],
+			formatMap[br[6]],
 			os.PathSeparator,
-			r[5],
+			formatMap[br[5]],
 		)
 
 	case 6:
@@ -332,7 +235,7 @@ func keyComponentPath(br *brokenKey, level int, baseDir string) string {
 			"%s%c%c",
 			baseDir,
 			os.PathSeparator,
-			r[6],
+			formatMap[br[6]],
 		)
 
 	case 7:

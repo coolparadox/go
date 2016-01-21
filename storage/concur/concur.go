@@ -73,13 +73,35 @@ import "io"
 import "log"
 import "io/ioutil"
 
-//import "github.com/coolparadox/go/sort/runeslice"
+// KeyMax is a convenience naming for the maximum value of a key.
+const KeyMax = 0xFFFFFFFF
 
 // Concur handles a collection of byte sequences stored in a directory of
 // the filesystem.
 type Concur struct {
 	initialized bool
 	dir         string
+}
+
+// concurMarkLabel is the file checked for existence of a concur database in a
+// directory.
+const concurMarkLabel string = ".concur"
+
+// concurLabelExists answers if there is a concur label file at the top level
+// of the directory pointed by an initialized collection.
+func (r Concur) concurLabelExists() error {
+	if !r.initialized {
+		return errors.New("unitialized concur.Concur")
+	}
+	concurMarkFile := path.Join(r.dir, concurMarkLabel)
+	_, err := os.Stat(concurMarkFile)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return errors.New(fmt.Sprintf("cannot check for database label file: %s", err))
+		}
+		return errors.New("missing database label file")
+	}
+	return nil
 }
 
 // New creates a Concur value.
