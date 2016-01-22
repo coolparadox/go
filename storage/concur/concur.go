@@ -169,6 +169,11 @@ func (r Concur) SaveAs(key uint32, value []byte) error {
 		return errors.New(fmt.Sprintf("cannot create directory '%s': %s", targetDir, err))
 	}
 	targetPath := joinPathChar(targetDir, targetChar)
+	lockFile, err := lockDirForWrite(targetDir)
+	if err != nil {
+		return errors.New(fmt.Sprintf("cannot lock: %s", err))
+	}
+	defer lockFile.Close()
 	err = ioutil.WriteFile(targetPath, value, 0666)
 	if err != nil {
 		return errors.New(fmt.Sprintf("cannot write file '%s': %s", targetPath, err))
@@ -182,11 +187,16 @@ func (r Concur) Load(key uint32) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	sourceDir, sourceChar, _ := formatPath(key, r.dir)
-	sourcePath := joinPathChar(sourceDir, sourceChar)
-	buf, err := ioutil.ReadFile(sourcePath)
+	targetDir, targetChar, _ := formatPath(key, r.dir)
+	targetPath := joinPathChar(targetDir, targetChar)
+	lockFile, err := lockDirForRead(targetDir)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("cannot read file '%s': %s", sourcePath, err))
+		return nil, errors.New(fmt.Sprintf("cannot lock: %s", err))
+	}
+	defer lockFile.Close()
+	buf, err := ioutil.ReadFile(targetPath)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("cannot read file '%s': %s", targetPath, err))
 	}
 	return buf, nil
 }
@@ -199,6 +209,11 @@ func (r Concur) Erase(key uint32) error {
 	}
 	targetDir, targetChar, br := formatPath(key, r.dir)
 	targetPath := joinPathChar(targetDir, targetChar)
+	lockFile, err := lockDirForWrite(targetDir)
+	if err != nil {
+		return errors.New(fmt.Sprintf("cannot lock: %s", err))
+	}
+	defer lockFile.Close()
 	err = os.Remove(targetPath)
 	if err != nil {
 		return errors.New(fmt.Sprintf("cannot remove file '%s': %s", targetPath, err))
