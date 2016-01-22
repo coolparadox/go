@@ -168,7 +168,7 @@ func (r Concur) SaveAs(key uint32, value []byte) error {
 	if err != nil {
 		return errors.New(fmt.Sprintf("cannot create directory '%s': %s", targetDir, err))
 	}
-	targetPath := fmt.Sprintf("%s%c%c", targetDir, os.PathSeparator, targetChar)
+	targetPath := joinPathChar(targetDir, targetChar)
 	err = ioutil.WriteFile(targetPath, value, 0666)
 	if err != nil {
 		return errors.New(fmt.Sprintf("cannot write file '%s': %s", targetPath, err))
@@ -183,7 +183,7 @@ func (r Concur) Load(key uint32) ([]byte, error) {
 		return nil, err
 	}
 	sourceDir, sourceChar, _ := formatPath(key, r.dir)
-	sourcePath := fmt.Sprintf("%s%c%c", sourceDir, os.PathSeparator, sourceChar)
+	sourcePath := joinPathChar(sourceDir, sourceChar)
 	buf, err := ioutil.ReadFile(sourcePath)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("cannot read file '%s': %s", sourcePath, err))
@@ -198,7 +198,7 @@ func (r Concur) Erase(key uint32) error {
 		return err
 	}
 	targetDir, targetChar, br := formatPath(key, r.dir)
-	targetPath := fmt.Sprintf("%s%c%c", targetDir, os.PathSeparator, targetChar)
+	targetPath := joinPathChar(targetDir, targetChar)
 	err = os.Remove(targetPath)
 	if err != nil {
 		return errors.New(fmt.Sprintf("cannot remove file '%s': %s", targetPath, err))
@@ -218,7 +218,7 @@ func (r Concur) Exists(key uint32) (bool, error) {
 		return false, err
 	}
 	targetDir, targetChar, _ := formatPath(key, r.dir)
-	targetPath := fmt.Sprintf("%s%c%c", targetDir, os.PathSeparator, targetChar)
+	targetPath := joinPathChar(targetDir, targetChar)
 	_, err = os.Stat(targetPath)
 	if err == nil {
 		return true, nil

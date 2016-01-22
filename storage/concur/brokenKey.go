@@ -201,6 +201,12 @@ func formatPath(key uint32, baseDir string) (string, rune, brokenKey) {
 	return dir, formatMap[br[0]], br
 }
 
+// joinPathChar adds a character to a filesystem path, after appending the
+// path separator.
+func joinPathChar(s string, c rune) string {
+	return fmt.Sprintf("%s%c%c", s, os.PathSeparator, c)
+}
+
 // smallestKeyNotLessThan takes broken key components, depth level and a base
 // directory to compose the path to a subdirectory in the filesystem. Then it
 // returns the smallest key that exists under this subdirectory.
