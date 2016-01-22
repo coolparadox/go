@@ -59,7 +59,7 @@ func lockDirForRead(dir string) (*os.File, error) {
 	err = unix.Flock(int(lockFile.Fd()), unix.LOCK_SH)
 	if err != nil {
 		lockFile.Close()
-		return nil, errors.New(fmt.Sprintf("cannot place exclusive lock: %s", err))
+		return nil, errors.New(fmt.Sprintf("cannot place shared lock: %s", err))
 	}
 	return lockFile, nil
 }
