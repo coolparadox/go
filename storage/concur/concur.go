@@ -377,26 +377,61 @@ func (r Concur) SmallestKeyNotLessThan(key uint32) (uint32, bool, error) {
 //
 // Returns the assigned key.
 func (r Concur) Save(value []byte) (uint32, error) {
-	err := r.concurLabelExists()
+	var err error
+	err = r.concurLabelExists()
 	if err != nil {
 		return 0, err
 	}
 	var br brokenKey
-	ok, err := findFreeKeyFromLevel(&br, 6, r.dir)
+	var targetDir string
+	var targetPath string
+	var key uint32
+	for {
+		// Find a free key.
+		ok, err := findFreeKeyFromLevel(&br, 6, r.dir)
+		if err != nil {
+			return 0, errors.New(fmt.Sprintf("cannot find free key: %s", err))
+		}
+		if !ok {
+			// findFreeKeyFromLevel() is supposed to always find a (broken) key,
+			// even impossible ones.
+			panic("Save() weirdness: no free broken key and no erros?!")
+		}
+		key, err = composeKey(&br)
+		if err != nil {
+			// As free keys are searched in ascending order, assume impossible
+			// ones indicate exaustion of key space.
+			return 0, errors.New(fmt.Sprintf("no more keys available."))
+		}
+		targetDir = keyComponentPath(br, 1, r.dir)
+		err = os.MkdirAll(targetDir, 0777)
+		if err != nil {
+			return 0, errors.New(fmt.Sprintf("cannot create directory '%s': %s", targetDir, err))
+		}
+		targetChar := formatMap[br[0]]
+		targetPath = joinPathChar(targetDir, targetChar)
+		lockFile, err := lockDirForWrite(targetDir)
+		if err != nil {
+			return 0, errors.New(fmt.Sprintf("cannot lock: %s", err))
+		}
+		// Make sure another concurrent Save() didn't get the same key.
+		_, err = os.Stat(targetPath)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				lockFile.Close()
+				return 0, errors.New(fmt.Sprintf("cannot check for '%s' existence: %s", targetPath, err))
+			}
+			// Yay, our key is ours :-)
+			defer lockFile.Close()
+			break
+		}
+		// Another concurrent Save() stole our key! >:-/
+		lockFile.Close()
+	}
+	// A free key was found.
+	err = ioutil.WriteFile(targetPath, value, 0666)
 	if err != nil {
-		return 0, errors.New(fmt.Sprintf("cannot find free key: %s", err))
+		return 0, errors.New(fmt.Sprintf("cannot write file '%s': %s", targetPath, err))
 	}
-	if !ok {
-		// findFreeKeyFromLevel() is supposed to always find a (broken) key,
-		// even impossible ones.
-		panic("Save() weirdness: no free broken key and no erros?!")
-	}
-	key, err := composeKey(&br)
-	if err != nil {
-		// As free keys are searched in ascending order, assume impossible
-		// ones indicate exaustion of key space.
-		return 0, errors.New(fmt.Sprintf("no more keys available."))
-	}
-	err = r.SaveAs(key, value)
-	return key, err
+	return key, nil
 }
