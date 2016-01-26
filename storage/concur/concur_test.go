@@ -132,7 +132,10 @@ func TestSaveMany(t *testing.T) {
 		if i%2 == 0 {
 			// test concur.SaveAs
 			for {
-				key = uint32(rand.Int63())
+				key = rand.Uint32()
+				if key >= concur.KeyMax {
+					continue
+				}
 				_, ok := savedKeys[key]
 				if !ok {
 					break
@@ -181,7 +184,7 @@ func TestKeyList(t *testing.T) {
 	for ok {
 		//t.Logf("found key: %v", key)
 		receivedKeys = append(receivedKeys, key)
-		if key == concur.KeyMax {
+		if key >= concur.KeyMax {
 			break
 		}
 		key, ok, err = db.SmallestKeyNotLessThan(key + 1)

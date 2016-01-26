@@ -73,7 +73,7 @@ import "io"
 import "log"
 import "io/ioutil"
 
-// KeyMax is a convenience naming for the maximum value of a key.
+// KeyMax represents the maximum value of a key.
 const KeyMax = 0xFFFFFFFF
 
 // Concur handles a collection of byte sequences stored in a directory of
@@ -312,64 +312,53 @@ func Wipe(dir string) error {
 //
 // The bool return value tells if a key was found to be answered.
 func (r Concur) SmallestKeyNotLessThan(key uint32) (uint32, bool, error) {
-
 	// Check for unitialized receiver.
 	err := r.concurLabelExists()
 	if err != nil {
 		return 0, false, err
 	}
-
 	// minimum represents the smallest admissible value to be answered.
 	minimum := decomposeKey(key)
-
 	// Look for a key in descending order of level depth.
-	for level := 0; level < 7; level++ {
-
+	for level := 0; level < keyDepth; level++ {
 		if level > 0 {
-
 			// Key was not found in deepest level.
 			// Update minimum to represent the first admissible value
 			// to be searched in this level.
 			for i := 0; i < level; i++ {
-				minimum[i] = 35
+				minimum[i] = keyBase - 1
 			}
-			k, err := composeKey(&minimum)
+			k, err := composeKey(minimum)
 			if err != nil {
+				_ = "breakpoint"
 				return 0, false, nil
 			}
 			if k < KeyMax {
 				k++
 			} else {
-
 				// Key range limit reached.
 				return 0, false, nil
-
 			}
 			minimum = decomposeKey(k)
-
 		}
-
 		// Look for the smallest key not less than the minimum in this depth level.
-		br, found, err := smallestKeyNotLessThanInLevel(&minimum, level, r.dir)
+		br, err := smallestKeyNotLessThanInLevel(minimum, level, r.dir)
 		if err != nil {
 			return 0, false, errors.New(fmt.Sprintf("cannot lookup key %v: %s", key, err))
 		}
-		if found {
-
+		if br != nil {
 			// Yay!! Found it :-)
-			answer, err := composeKey(&br)
+			answer, err := composeKey(br)
 			if err != nil {
+				_ = "breakpoint"
 				// Assume compose failure is due to garbage leading to impossible broken keys.
 				return 0, false, nil
 			}
 			return answer, true, nil
-
 		}
 	}
-
 	// Search exausted in all depth levels.
 	return 0, false, nil
-
 }
 
 // Save creates a key with a new value.
@@ -382,23 +371,23 @@ func (r Concur) Save(value []byte) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
-	var br brokenKey
 	var targetDir string
 	var targetPath string
 	var key uint32
 	for {
 		// Find a free key.
-		ok, err := findFreeKeyFromLevel(&br, 6, r.dir)
+		br, err := findFreeKeyFromLevel(newBrokenKey(), keyDepth-1, r.dir)
 		if err != nil {
 			return 0, errors.New(fmt.Sprintf("cannot find free key: %s", err))
 		}
-		if !ok {
-			// findFreeKeyFromLevel() is supposed to always find a (broken) key,
+		if br == nil {
+			// findFreeKeyFromLevel() is supposed to always find a key,
 			// even impossible ones.
 			panic("Save() weirdness: no free broken key and no erros?!")
 		}
-		key, err = composeKey(&br)
+		key, err = composeKey(br)
 		if err != nil {
+			_ = "breakpoint"
 			// As free keys are searched in ascending order, assume impossible
 			// ones indicate exaustion of key space.
 			return 0, errors.New(fmt.Sprintf("no more keys available."))
