@@ -18,15 +18,14 @@
 package concur_test
 
 import "github.com/coolparadox/go/storage/concur"
-//import "github.com/coolparadox/go/sort/uint32slice"
+import "github.com/coolparadox/go/sort/uint32slice"
 import "testing"
-//import "os"
-//import "bytes"
-//import "math/rand"
-//import "time"
-//import "io"
+import "os"
+import "bytes"
+import "math/rand"
+import "time"
+import "io"
 import "flag"
-//import "fmt"
 
 var myPath string
 var howManySaves uint
@@ -37,36 +36,6 @@ func init() {
 }
 
 var db concur.Concur
-
-func TestComposeKey(t *testing.T) {
-	var err error
-	var k uint32
-	k = concur.KeyMax
-	br := concur.DecomposeKey(k)
-	t.Logf("%v --> %v", k, br)
-	br[len(br)-1]++
-	k, err = concur.ComposeKey(br)
-	t.Logf("%v --> %v (err %s)", br, k, err)
-
-	var n1, n2, n3, n4 uint32
-
-	n1 = 0xFFFF
-	n2 = 2
-	n3 = n1 * n2
-	t.Logf("%v * %v = %v", n1, n2, n3)
-	n4, err = concur.MultiplyUint32(n1, n2)
-	t.Logf("%v * %v = %v (%s)", n1, n2, n4, err)
-
-	n1 = 0xFFFFFFF
-	n2 = 2
-	n3 = n1 + n2
-	t.Logf("%v + %v = %v", n1, n2, n3)
-	n4, err = concur.AddUint32(n1, n2)
-	t.Logf("%v + %v = %v (%s)", n1, n2, n4, err)
-
-}
-
-/*
 
 func TestInit(t *testing.T) {
 	var err error
@@ -81,7 +50,6 @@ func TestInit(t *testing.T) {
 }
 
 func TestNewEmpty(t *testing.T) {
-
 	var err error
 	err = concur.Wipe(myPath)
 	if err != nil {
@@ -214,7 +182,6 @@ func TestKeyList(t *testing.T) {
 	receivedKeys := make([]uint32, 0)
 	for ok {
 		//t.Logf("found key: %v", key)
-		fmt.Printf("found key: %v\n", key)
 		receivedKeys = append(receivedKeys, key)
 		if key >= concur.KeyMax {
 			break
@@ -272,5 +239,3 @@ func TestExists(t *testing.T) {
 		}
 	}
 }
-
-*/

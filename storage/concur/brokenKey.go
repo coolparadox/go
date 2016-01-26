@@ -33,10 +33,6 @@ func newBrokenKey() brokenKey {
 
 // decomposeKey converts a key to its components.
 func decomposeKey(key uint32) brokenKey {
-	return DecomposeKey(key)
-}
-
-func DecomposeKey(key uint32) brokenKey {
 	answer := newBrokenKey()
 	for i := 0; i < keyDepth; i++ {
 		answer[i] = key % keyBase
@@ -45,12 +41,8 @@ func DecomposeKey(key uint32) brokenKey {
 	return answer
 }
 
-// composeKey converts key components to a key.
-func composeKey(br brokenKey) (uint32, error) {
-	return ComposeKey(br)
-}
-
-func MultiplyUint32(a, b uint32) (uint32, error) {
+// multiplyUint32 multiplies two uint32s with overflow detection.
+func multiplyUint32(a, b uint32) (uint32, error) {
 	c := a * b
 	if a <= 1 || b <= 1 {
 		return c, nil
@@ -61,7 +53,8 @@ func MultiplyUint32(a, b uint32) (uint32, error) {
 	return 0, errors.New("overflow")
 }
 
-func AddUint32(a, b uint32) (uint32, error) {
+// addUint32 adds two uint32s with overflow detection.
+func addUint32(a, b uint32) (uint32, error) {
 	c := a + b
 	if c >= a && c >= b {
 		return c, nil
@@ -69,19 +62,18 @@ func AddUint32(a, b uint32) (uint32, error) {
 	return 0, errors.New("overflow")
 }
 
-func ComposeKey(br brokenKey) (uint32, error) {
+// composeKey converts key components to a key.
+func composeKey(br brokenKey) (uint32, error) {
+	var err error
 	var answer uint32 = br[keyDepth-1]
 	var i int
 	for i = keyDepth - 2; i >= 0; i-- {
-		var prev uint32
-		prev = answer
-		answer *= keyBase
-		if answer < prev {
+		answer, err = multiplyUint32(answer, keyBase)
+		if err != nil {
 			return 0, errors.New(fmt.Sprintf("impossible broken key '%v'", br))
 		}
-		prev = answer
-		answer += br[i]
-		if answer < prev {
+		answer, err = addUint32(answer, br[i])
+		if err != nil {
 			return 0, errors.New(fmt.Sprintf("impossible broken key '%v'", br))
 		}
 	}
