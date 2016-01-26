@@ -14,7 +14,7 @@ collection can then be managed by methods of the collection handler.
     db, _ := concur.New("/path/to/my/collection")
     key, _ := db.Save(byte[]{1,3,5,7,9}) // store data in a new key
     val, _ := db.Load(key) // retrieve value of a key
-    db.Put(key, byte[]{0,2,4,6,8}) // update existent key
+    db.SaveAs(key, byte[]{0,2,4,6,8}) // update existent key
     db.Erase(key) // remove a key
 
 
@@ -55,7 +55,7 @@ Document filesystem guidelines for better performance with package concur.
 ```go
 const KeyMax = 0xFFFFFFFF
 ```
-KeyMax is the maximum value of a key.
+KeyMax represents the maximum value of a key.
 
 #### func  Wipe
 
@@ -105,26 +105,12 @@ func (r Concur) Exists(key uint32) (bool, error)
 ```
 Exists verifies if a key exists.
 
-#### func (Concur) Get
-
-```go
-func (r Concur) Get(key uint32) ([]byte, error)
-```
-Get retrieves the value associated with a key.
-
 #### func (Concur) Load
 
 ```go
 func (r Concur) Load(key uint32) ([]byte, error)
 ```
-Load is a synonym for Get.
-
-#### func (Concur) Put
-
-```go
-func (r Concur) Put(key uint32, value []byte) error
-```
-Put creates (or updates) a key with a new value.
+Load retrieves the value associated with a key.
 
 #### func (Concur) Save
 
@@ -135,6 +121,13 @@ Save creates a key with a new value. The key is automatically assigned and
 guaranteed to be new.
 
 Returns the assigned key.
+
+#### func (Concur) SaveAs
+
+```go
+func (r Concur) SaveAs(key uint32, value []byte) error
+```
+SaveAs creates (or updates) a key with a new value.
 
 #### func (Concur) SmallestKeyNotLessThan
 
