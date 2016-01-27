@@ -81,6 +81,7 @@ const KeyMax = 0xFFFFFFFF
 type Concur struct {
 	initialized bool
 	dir         string
+	base        uint32
 }
 
 // concurMarkLabel is the file checked for existence of a concur database in a
@@ -104,12 +105,38 @@ func (r Concur) concurLabelExists() error {
 	return nil
 }
 
+// uint32ToBytes converts a uint32 to byte representation.
+func uint32ToBytes(x uint32) []byte {
+	answer := make([]byte, 4)
+	for i := 0; i < 4; i++ {
+		answer[i] = byte(x % 0x100)
+		x /= 0x100
+	}
+	return answer
+}
+
+// bytesToUint32 is the counterpart of uint32ToBytes.
+func bytesToUint32(b []byte) (uint32, error) {
+	if len(b) != 4 {
+		return 0, errors.New(fmt.Sprintf("invalid length %v of byte sequence", len(b)))
+	}
+	var answer uint32 = uint32(b[3])
+	for i := 1; i < 4; i++ {
+		answer *= 0x100
+		answer += uint32(b[3-i])
+	}
+	return answer, nil
+}
+
 // New creates a Concur value.
 //
-// The dir parameter is an absolute path to a directory in the filesystem
+// Parameter dir is an absolute path to a directory in the filesystem
 // for storing the collection. If it's the first time this directory is used by
 // package concur, it must be empty.
-func New(dir string) (Concur, error) {
+// Parameter base is the numeric base of key components for naming files and
+// subdirectories under the collection. It has effect only during creation
+// of a collection. Pass zero for a sane default.
+func New(dir string, base uint32) (Concur, error) {
 	if !path.IsAbs(dir) {
 		return Concur{}, errors.New(fmt.Sprintf("dir '%s' is not absolute", dir))
 	}
@@ -135,25 +162,49 @@ func New(dir string) (Concur, error) {
 		if finfo.IsDir() {
 			return Concur{}, errors.New(fmt.Sprintf("concur db mark file '%s' is a directory", concurMarkFile))
 		}
+		cFile, err := os.Open(concurMarkFile)
+		if err != nil {
+			return Concur{}, errors.New(fmt.Sprintf("cannot open concur mark file: %s", err))
+		}
+		b := make([]byte, 4)
+		n, err := cFile.Read(b)
+		if err != nil {
+			return Concur{}, errors.New(fmt.Sprintf("cannot read concur mark file: %s", err))
+		}
+		if n != 4 {
+			return Concur{}, errors.New(fmt.Sprintf("weird byte length %v from concur mark file", n))
+		}
+		base, err = bytesToUint32(b)
+		if err != nil {
+			return Concur{}, errors.New(fmt.Sprintf("cannot parse base from concur mark file: %s", err))
+		}
+		// FIXME: sanitize base
 	} else {
-		file, err := os.Open(dir)
+		// FIXME: sanitize base
+		dFile, err := os.Open(dir)
 		if err != nil {
 			return Concur{}, errors.New(fmt.Sprintf("cannot open '%s': %s", dir, err))
 		}
-		defer file.Close()
-		_, err = file.Readdir(1)
+		defer dFile.Close()
+		_, err = dFile.Readdir(1)
 		if err != io.EOF {
 			return Concur{}, errors.New(fmt.Sprintf("dir '%s' is not empty and is not a concur db", dir))
 		}
-		_, err = os.Create(concurMarkFile)
+		cFile, err := os.Create(concurMarkFile)
 		if err != nil {
 			return Concur{}, errors.New(fmt.Sprintf("cannot create concur db mark file '%s'", concurMarkFile))
+		}
+		defer cFile.Close()
+		_, err = cFile.Write(uint32ToBytes(base))
+		if err != nil {
+			return Concur{}, errors.New(fmt.Sprintf("cannot write base to concur mark file: %s", err))
 		}
 		log.Printf("concur database initialized in '%s'", dir)
 	}
 	return Concur{
 		initialized: true,
 		dir:         dir,
+		base:        base,
 	}, nil
 }
 
