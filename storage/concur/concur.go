@@ -51,14 +51,7 @@ collection are written to disk.
 
 Wipe method can take a long time to return.
 
-Bugs
-
-Concurrent access to a collection is not yet thought of, and can be a
-fruitful source of weirdness.
-
 Wish List
-
-Protect against concurrent access to collections.
 
 Document filesystem guidelines for better performance with package concur.
 

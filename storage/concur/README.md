@@ -38,19 +38,20 @@ collection are written to disk.
 Wipe method can take a long time to return.
 
 
-### Bugs
-
-Concurrent access to a collection is not yet thought of, and can be a fruitful
-source of weirdness.
-
-
 ### Wish List
-
-Protect against concurrent access to collections.
 
 Document filesystem guidelines for better performance with package concur.
 
 ## Usage
+
+```go
+const (
+	BaseMin = 2
+	BaseMax = 62
+)
+```
+BaseMin and BaseMax define the range of possible values for the numeric base of
+key components in the filesystem (see parameter base in New).
 
 ```go
 const KeyMax = 0xFFFFFFFF
@@ -83,13 +84,17 @@ filesystem.
 #### func  New
 
 ```go
-func New(dir string) (Concur, error)
+func New(dir string, base uint32) (Concur, error)
 ```
 New creates a Concur value.
 
-The dir parameter is an absolute path to a directory in the filesystem for
-storing the collection. If it's the first time this directory is used by package
-concur, it must be empty.
+Parameter dir is an absolute path to a directory in the filesystem for storing
+the collection. If it's the first time this directory is used by package concur,
+it must be empty.
+
+Parameter base is the numeric base of key components for naming files and
+subdirectories under the collection. It has effect only during creation of a
+collection. Pass zero for a sane default.
 
 #### func (Concur) Erase
 
