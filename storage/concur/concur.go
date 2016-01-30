@@ -76,12 +76,20 @@ import "io/ioutil"
 // KeyMax represents the maximum value of a key.
 const KeyMax = 0xFFFFFFFF
 
+// BaseMin and BaseMax define the range of possible values for the numeric base
+// of key components in the filesystem (see parameter base in New).
+const (
+	BaseMin = 2
+	BaseMax = 62
+)
+
 // Concur handles a collection of byte sequences stored in a directory of
 // the filesystem.
 type Concur struct {
 	initialized bool
 	dir         string
-	base        uint32
+	keyBase     uint32
+	keyDepth    int
 }
 
 // concurMarkLabel is the file checked for existence of a concur database in a
@@ -133,6 +141,7 @@ func bytesToUint32(b []byte) (uint32, error) {
 // Parameter dir is an absolute path to a directory in the filesystem
 // for storing the collection. If it's the first time this directory is used by
 // package concur, it must be empty.
+//
 // Parameter base is the numeric base of key components for naming files and
 // subdirectories under the collection. It has effect only during creation
 // of a collection. Pass zero for a sane default.
@@ -178,9 +187,16 @@ func New(dir string, base uint32) (Concur, error) {
 		if err != nil {
 			return Concur{}, errors.New(fmt.Sprintf("cannot parse base from concur mark file: %s", err))
 		}
-		// FIXME: sanitize base
+		if base < BaseMin || base > BaseMax {
+			panic(fmt.Sprintf("key base value from concur mark file is out of range: %v", base))
+		}
 	} else {
-		// FIXME: sanitize base
+		if base == 0 {
+			base = 36
+		}
+		if base < BaseMin || base > BaseMax {
+			return Concur{}, errors.New(fmt.Sprintf("base parameter is out of range"))
+		}
 		dFile, err := os.Open(dir)
 		if err != nil {
 			return Concur{}, errors.New(fmt.Sprintf("cannot open '%s': %s", dir, err))
@@ -201,10 +217,16 @@ func New(dir string, base uint32) (Concur, error) {
 		}
 		log.Printf("concur database initialized in '%s'", dir)
 	}
+	var k uint32
+	var depth int
+	for k = KeyMax; k > 0; k /= base {
+		depth++
+	}
 	return Concur{
 		initialized: true,
 		dir:         dir,
-		base:        base,
+		keyBase:     base,
+		keyDepth:    depth,
 	}, nil
 }
 
@@ -214,7 +236,7 @@ func (r Concur) SaveAs(key uint32, value []byte) error {
 	if err != nil {
 		return err
 	}
-	targetDir, targetChar, _ := formatPath(key, r.dir)
+	targetDir, targetChar, _ := formatPath(key, r.dir, r.keyBase, r.keyDepth)
 	err = os.MkdirAll(targetDir, 0777)
 	if err != nil {
 		return errors.New(fmt.Sprintf("cannot create directory '%s': %s", targetDir, err))
@@ -238,7 +260,7 @@ func (r Concur) Load(key uint32) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	targetDir, targetChar, _ := formatPath(key, r.dir)
+	targetDir, targetChar, _ := formatPath(key, r.dir, r.keyBase, r.keyDepth)
 	targetPath := joinPathChar(targetDir, targetChar)
 	lockFile, err := lockDirForRead(targetDir)
 	if err != nil {
@@ -258,7 +280,7 @@ func (r Concur) Erase(key uint32) error {
 	if err != nil {
 		return err
 	}
-	targetDir, targetChar, br := formatPath(key, r.dir)
+	targetDir, targetChar, br := formatPath(key, r.dir, r.keyBase, r.keyDepth)
 	targetPath := joinPathChar(targetDir, targetChar)
 	lockFile, err := lockDirForWrite(targetDir)
 	if err != nil {
@@ -271,7 +293,7 @@ func (r Concur) Erase(key uint32) error {
 	}
 	// Erase full marks up to top level.
 	for level := 1; level <= 6; level++ {
-		fullMarkPath := fmt.Sprintf("%s%c%s", keyComponentPath(br, level, r.dir), os.PathSeparator, "_")
+		fullMarkPath := fmt.Sprintf("%s%c%s", keyComponentPath(br, level, r.dir, r.keyDepth), os.PathSeparator, "_")
 		_ = os.RemoveAll(fullMarkPath)
 	}
 	return nil
@@ -283,7 +305,7 @@ func (r Concur) Exists(key uint32) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	targetDir, targetChar, _ := formatPath(key, r.dir)
+	targetDir, targetChar, _ := formatPath(key, r.dir, r.keyBase, r.keyDepth)
 	targetPath := joinPathChar(targetDir, targetChar)
 	_, err = os.Stat(targetPath)
 	if err == nil {
@@ -369,17 +391,17 @@ func (r Concur) SmallestKeyNotLessThan(key uint32) (uint32, bool, error) {
 		return 0, false, err
 	}
 	// minimum represents the smallest admissible value to be answered.
-	minimum := decomposeKey(key)
+	minimum := decomposeKey(key, r.keyBase, r.keyDepth)
 	// Look for a key in descending order of level depth.
-	for level := 0; level < keyDepth; level++ {
+	for level := 0; level < r.keyDepth; level++ {
 		if level > 0 {
 			// Key was not found in deepest level.
 			// Update minimum to represent the first admissible value
 			// to be searched in this level.
 			for i := 0; i < level; i++ {
-				minimum[i] = keyBase - 1
+				minimum[i] = r.keyBase - 1
 			}
-			k, err := composeKey(minimum)
+			k, err := composeKey(minimum, r.keyBase, r.keyDepth)
 			if err != nil {
 				_ = "breakpoint"
 				return 0, false, nil
@@ -390,16 +412,16 @@ func (r Concur) SmallestKeyNotLessThan(key uint32) (uint32, bool, error) {
 				// Key range limit reached.
 				return 0, false, nil
 			}
-			minimum = decomposeKey(k)
+			minimum = decomposeKey(k, r.keyBase, r.keyDepth)
 		}
 		// Look for the smallest key not less than the minimum in this depth level.
-		br, err := smallestKeyNotLessThanInLevel(minimum, level, r.dir)
+		br, err := smallestKeyNotLessThanInLevel(minimum, level, r.dir, r.keyBase, r.keyDepth)
 		if err != nil {
 			return 0, false, errors.New(fmt.Sprintf("cannot lookup key %v: %s", key, err))
 		}
 		if br != nil {
 			// Yay!! Found it :-)
-			answer, err := composeKey(br)
+			answer, err := composeKey(br, r.keyBase, r.keyDepth)
 			if err != nil {
 				_ = "breakpoint"
 				// Assume compose failure is due to garbage leading to impossible broken keys.
@@ -427,23 +449,23 @@ func (r Concur) Save(value []byte) (uint32, error) {
 	var key uint32
 	for {
 		// Find a free key.
-		br, err := findFreeKeyFromLevel(newBrokenKey(), keyDepth-1, r.dir)
+		br, err := findFreeKeyFromLevel(newBrokenKey(r.keyDepth), r.keyDepth-1, r.dir, r.keyBase, r.keyDepth)
 		if err != nil {
 			return 0, errors.New(fmt.Sprintf("cannot find free key: %s", err))
 		}
 		if br == nil {
 			// findFreeKeyFromLevel() is supposed to always find a key,
 			// even impossible ones.
-			panic("Save() weirdness: no free broken key and no erros?!")
+			panic("Save() weirdness: no free broken key and no errors?!")
 		}
-		key, err = composeKey(br)
+		key, err = composeKey(br, r.keyBase, r.keyDepth)
 		if err != nil {
 			_ = "breakpoint"
 			// As free keys are searched in ascending order, assume impossible
 			// ones indicate exaustion of key space.
 			return 0, errors.New(fmt.Sprintf("no more keys available."))
 		}
-		targetDir = keyComponentPath(br, 1, r.dir)
+		targetDir = keyComponentPath(br, 1, r.dir, r.keyDepth)
 		err = os.MkdirAll(targetDir, 0777)
 		if err != nil {
 			return 0, errors.New(fmt.Sprintf("cannot create directory '%s': %s", targetDir, err))

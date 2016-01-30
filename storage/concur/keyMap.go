@@ -28,13 +28,14 @@ const formatSequence = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRST
 
 // Mapping between characters and positions in formatSequence.
 var (
-	keyBase   uint32
-	keyDepth  int
 	formatMap map[uint32]rune
 	parseMap  map[rune]uint32
 )
 
 func init() {
+	if len(formatSequence) > BaseMax {
+		panic("format sequence does not contain enough characters")
+	}
 	for i, c1 := range formatSequence {
 		for j, c2 := range formatSequence {
 			if j <= i {
@@ -45,14 +46,10 @@ func init() {
 			}
 		}
 	}
-	keyBase = uint32(len(formatSequence))
-	var k uint32
-	for k = KeyMax; k > 0; k /= keyBase {
-		keyDepth++
-	}
-	formatMap = make(map[uint32]rune, keyBase)
-	parseMap = make(map[rune]uint32, keyBase)
-	for k = 0; k < keyBase; k++ {
+	mapLen := len(formatSequence)
+	formatMap = make(map[uint32]rune, mapLen)
+	parseMap = make(map[rune]uint32, mapLen)
+	for k := 0; k < mapLen; k++ {
 		key := rune(formatSequence[k])
 		formatMap[uint32(k)] = key
 		parseMap[key] = uint32(k)
@@ -61,7 +58,7 @@ func init() {
 
 // listKeyComponentsInDir returns all key components found in a subdirectory,
 // sorted in ascending order.
-func listKeyComponentsInDir(dir string) ([]uint32, error) {
+func listKeyComponentsInDir(dir string, keyBase uint32) ([]uint32, error) {
 	answer := make([]uint32, 0, keyBase)
 	// Iterate through all names in directory.
 	var err error
@@ -85,6 +82,9 @@ func listKeyComponentsInDir(dir string) ([]uint32, error) {
 		char := rune(name[0])
 		component, ok := parseMap[char]
 		if !ok {
+			continue
+		}
+		if component >= keyBase {
 			continue
 		}
 		answer = append(answer, component)

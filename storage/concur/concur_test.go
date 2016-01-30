@@ -29,10 +29,12 @@ import "flag"
 
 var myPath string
 var howManySaves uint
+var keyBase uint
 
 func init() {
 	flag.StringVar(&myPath, "dir", "/tmp/my_data", "path to concur collection")
 	flag.UintVar(&howManySaves, "saves", 1000, "how many keys to create")
+	flag.UintVar(&keyBase, "base", 0, "numeric base of key components")
 }
 
 var db concur.Concur
@@ -64,7 +66,7 @@ func TestNewEmpty(t *testing.T) {
 	if err != io.EOF {
 		t.Fatalf("concur.Wipe did not empty directory '%s'", myPath)
 	}
-	db, err = concur.New(myPath)
+	db, err = concur.New(myPath, uint32(keyBase))
 	if err != nil {
 		t.Fatalf("concur.New failed: %s", err)
 	}
