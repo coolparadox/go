@@ -1,5 +1,6 @@
 # go
-Libraries for the [Go](http://www.golang.org) language.
+
+This repository contains libraries I wrote for the [Go](http://www.golang.org) language.
 
 Copyright 2016 Rafael Lorandi <coolparadox@gmail.com>
 
