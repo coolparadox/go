@@ -26,6 +26,7 @@ import "math/rand"
 import "time"
 import "io"
 import "flag"
+import "fmt"
 
 var myPath string
 var howManySaves uint
@@ -38,6 +39,17 @@ func init() {
 }
 
 var db concur.Concur
+
+func TestFormatChar(t * testing.T) {
+	var k uint32
+	for k = 0; k < 0xFFFF; k++ {
+		c := concur.FormatChar(k)
+		fmt.Printf("%c", c)
+	}
+	c := concur.FormatChar(k)
+	fmt.Printf("%c", c)
+	fmt.Printf("\n")
+}
 
 func TestInit(t *testing.T) {
 	var err error

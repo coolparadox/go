@@ -21,6 +21,34 @@ import "github.com/coolparadox/go/sort/uint32slice"
 import "errors"
 import "fmt"
 import "os"
+import "unicode"
+
+// formatChar converts a key component to its character representation in the
+// filesystem.
+func FormatChar(kc uint32) rune {
+	if kc > 0xFFFF {
+		panic("key component out of range")
+	}
+	var charCount uint32
+
+	for _, table := range unicode.Letter.R16 {
+		tableLen := uint32((table.Hi-table.Lo)/table.Stride + 1)
+		if tableLen > kc || charCount > kc-tableLen {
+			return rune(uint32(table.Lo) + (kc-charCount)*uint32(table.Stride))
+		}
+		charCount += uint32(tableLen)
+	}
+
+	for _, table := range unicode.Letter.R32 {
+		tableLen := uint32((table.Hi-table.Lo)/table.Stride + 1)
+		if tableLen > kc || charCount > kc-tableLen {
+			return rune(uint32(table.Lo) + (kc-charCount)*uint32(table.Stride))
+		}
+		charCount += uint32(tableLen)
+	}
+
+	panic("character exaustion")
+}
 
 // formatSequence contains characters to be used for mapping between
 // filesystem names and components of keys.
