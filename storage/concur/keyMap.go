@@ -22,6 +22,7 @@ import "errors"
 import "fmt"
 import "os"
 import "unicode"
+import "unicode/utf8"
 
 const tableLenMin = 1
 
@@ -100,40 +101,6 @@ func parseChar(r rune) (uint32, error) {
 
 }
 
-// formatSequence contains characters to be used for mapping between
-// filesystem names and components of keys.
-const formatSequence = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-// Mapping between characters and positions in formatSequence.
-var (
-	formatMap map[uint32]rune
-	parseMap  map[rune]uint32
-)
-
-func init() {
-	if len(formatSequence) > BaseMax {
-		panic("format sequence does not contain enough characters")
-	}
-	for i, c1 := range formatSequence {
-		for j, c2 := range formatSequence {
-			if j <= i {
-				continue
-			}
-			if c1 == c2 {
-				panic(fmt.Sprintf("non unique character in format sequence: '%c'", c1))
-			}
-		}
-	}
-	mapLen := len(formatSequence)
-	formatMap = make(map[uint32]rune, mapLen)
-	parseMap = make(map[rune]uint32, mapLen)
-	for k := 0; k < mapLen; k++ {
-		key := rune(formatSequence[k])
-		formatMap[uint32(k)] = key
-		parseMap[key] = uint32(k)
-	}
-}
-
 // listKeyComponentsInDir returns all key components found in a subdirectory,
 // sorted in ascending order.
 func listKeyComponentsInDir(dir string, keyBase uint32) ([]uint32, error) {
@@ -154,12 +121,15 @@ func listKeyComponentsInDir(dir string, keyBase uint32) ([]uint32, error) {
 	}
 	for _, name := range names {
 		// If name is a key character, store its component value for answer.
-		if len(name) > 1 {
+		char, n := utf8.DecodeRuneInString(name)
+		if char == utf8.RuneError {
 			continue
 		}
-		char := rune(name[0])
-		component, ok := parseMap[char]
-		if !ok {
+		if n < len(name) {
+			continue
+		}
+		component, err := parseChar(char)
+		if err != nil {
 			continue
 		}
 		if component >= keyBase {

@@ -73,7 +73,7 @@ const KeyMax = 0xFFFFFFFF
 // of key components in the filesystem (see parameter base in New).
 const (
 	BaseMin = 2
-	BaseMax = 62
+	BaseMax = 0x10000
 )
 
 // Concur handles a collection of byte sequences stored in a directory of
@@ -88,6 +88,10 @@ type Concur struct {
 // concurMarkLabel is the file checked for existence of a concur database in a
 // directory.
 const concurMarkLabel string = ".concur"
+
+// fullMarkLabel is the file that marks if a subdirectory is completely full
+// of key components.
+const fullMarkLabel string = ".full"
 
 // concurLabelExists answers if there is a concur label file at the top level
 // of the directory pointed by an initialized collection.
@@ -286,7 +290,7 @@ func (r Concur) Erase(key uint32) error {
 	}
 	// Erase full marks up to top level.
 	for level := 1; level <= 6; level++ {
-		fullMarkPath := fmt.Sprintf("%s%c%s", keyComponentPath(br, level, r.dir, r.keyDepth), os.PathSeparator, "_")
+		fullMarkPath := fmt.Sprintf("%s%c%s", keyComponentPath(br, level, r.dir, r.keyDepth), os.PathSeparator, fullMarkLabel)
 		_ = os.RemoveAll(fullMarkPath)
 	}
 	return nil
@@ -463,7 +467,7 @@ func (r Concur) Save(value []byte) (uint32, error) {
 		if err != nil {
 			return 0, errors.New(fmt.Sprintf("cannot create directory '%s': %s", targetDir, err))
 		}
-		targetChar := formatMap[br[0]]
+		targetChar := formatChar(br[0])
 		targetPath = joinPathChar(targetDir, targetChar)
 		lockFile, err := lockDirForWrite(targetDir)
 		if err != nil {
