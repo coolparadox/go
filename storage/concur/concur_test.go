@@ -27,6 +27,7 @@ import "time"
 import "io"
 import "flag"
 import "fmt"
+import "errors"
 
 var myPath string
 var howManySaves uint
@@ -40,14 +41,28 @@ func init() {
 
 var db concur.Concur
 
-func TestFormatChar(t * testing.T) {
+func formatAndParseChar(key uint32) error {
+	c := concur.FormatChar(key)
+	fmt.Printf("%c", c)
+	k, err := concur.ParseChar(c)
+	if err != nil {
+		return err
+	}
+	if k != key {
+		return errors.New(fmt.Sprintf("parsing mismatch for component character '%c': expected %v, got %v", c, key, k))
+	}
+	return nil
+}
+
+func TestFormatChar(t *testing.T) {
+	var err error
 	var k uint32
 	for k = 0; k < 0xFFFF; k++ {
-		c := concur.FormatChar(k)
-		fmt.Printf("%c", c)
+		err = formatAndParseChar(k)
+		if err != nil {
+			t.Fatalf("concur.TestFormatChar failed for key %v: %s", k, err)
+		}
 	}
-	c := concur.FormatChar(k)
-	fmt.Printf("%c", c)
 	fmt.Printf("\n")
 }
 

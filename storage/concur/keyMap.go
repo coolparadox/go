@@ -23,9 +23,15 @@ import "fmt"
 import "os"
 import "unicode"
 
+const tableLenMin = 1
+
+func FormatChar(kc uint32) rune {
+	return formatChar(kc)
+}
+
 // formatChar converts a key component to its character representation in the
 // filesystem.
-func FormatChar(kc uint32) rune {
+func formatChar(kc uint32) rune {
 	if kc > 0xFFFF {
 		panic("key component out of range")
 	}
@@ -33,6 +39,10 @@ func FormatChar(kc uint32) rune {
 
 	for _, table := range unicode.Letter.R16 {
 		tableLen := uint32((table.Hi-table.Lo)/table.Stride + 1)
+		if tableLen < tableLenMin {
+			continue
+		}
+		//fmt.Printf("R16 table len %v\n", tableLen)
 		if tableLen > kc || charCount > kc-tableLen {
 			return rune(uint32(table.Lo) + (kc-charCount)*uint32(table.Stride))
 		}
@@ -41,6 +51,10 @@ func FormatChar(kc uint32) rune {
 
 	for _, table := range unicode.Letter.R32 {
 		tableLen := uint32((table.Hi-table.Lo)/table.Stride + 1)
+		if tableLen < tableLenMin {
+			continue
+		}
+		//fmt.Printf("R32 table len %v\n", tableLen)
 		if tableLen > kc || charCount > kc-tableLen {
 			return rune(uint32(table.Lo) + (kc-charCount)*uint32(table.Stride))
 		}
@@ -48,6 +62,42 @@ func FormatChar(kc uint32) rune {
 	}
 
 	panic("character exaustion")
+}
+
+func ParseChar(r rune) (uint32, error) {
+	return parseChar(r)
+}
+
+// parseChar converts a character to its key component value.
+func parseChar(r rune) (uint32, error) {
+
+	c := uint32(r)
+	var charCount uint32
+
+	for _, table := range unicode.Letter.R16 {
+		tableLen := uint32((table.Hi-table.Lo)/table.Stride + 1)
+		if tableLen < tableLenMin {
+			continue
+		}
+		if uint32 (table.Hi) >= c {
+			return charCount + (c-uint32(table.Lo))/uint32(table.Stride), nil
+		}
+		charCount += uint32(tableLen)
+	}
+
+	for _, table := range unicode.Letter.R32 {
+		tableLen := uint32((table.Hi-table.Lo)/table.Stride + 1)
+		if tableLen < tableLenMin {
+			continue
+		}
+		if table.Hi >= c {
+			return charCount + (c-table.Lo)/table.Stride, nil
+		}
+		charCount += uint32(tableLen)
+	}
+
+	return 0, errors.New("unknown character")
+
 }
 
 // formatSequence contains characters to be used for mapping between
