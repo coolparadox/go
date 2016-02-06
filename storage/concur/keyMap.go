@@ -35,132 +35,60 @@ func ParseChar(r rune) (uint32, error) {
 }
 
 type formatRange struct {
-	startComponent uint16
-	rangeLen       uint16
-	startChar      rune
-	charStride     uint16
+	component uint16
+	character rune
+	length    uint16
 }
 
 var formatMap []formatRange
 
 func init() {
 
+	// Initialize key component character mapping.
 	formatMap = make([]formatRange, 0)
 	formatMap = append(
 		formatMap,
 		formatRange{
-			startComponent: 0,
-			rangeLen:       10,
-			startChar:      '0',
-			charStride:     1,
+			component: 0,
+			character: '0',
+			length:    10,
 		},
 	)
 	formatMap = append(
 		formatMap,
 		formatRange{
-			startComponent: 10,
-			rangeLen:       26,
-			startChar:      'A',
-			charStride:     1,
+			component: 10,
+			character: 'A',
+			length:    26,
 		},
 	)
-
-	var numberIDX int
-	for i, table := range unicode.Number.R16 {
-		if table.Lo <= '9' {
+	var comp uint32 = 36
+	var char rune = 'Z' + 1
+	var prevChar rune = unicode.MaxRune
+	var fr formatRange
+	for ; char < unicode.MaxRune; char++ {
+		if !unicode.IsPrint(char) {
 			continue
 		}
-		numberIDX = i
-		break
+		if comp < BaseMax && char == prevChar+1 {
+			fr.length++
+		} else {
+			if fr.length != 0 {
+				formatMap = append(formatMap, fr)
+				//fmt.Printf("formatMap append %v '%c' (%U) %v\n", fr.component, fr.character, fr.character, fr.length)
+			}
+			if comp >= BaseMax {
+				break
+			}
+			fr.component = uint16(comp)
+			fr.character = char
+			fr.length = 1
+		}
+		prevChar = char
+		comp++
 	}
-	number16 := true
-
-	var letterIDX int
-	for i, table := range unicode.Letter.R16 {
-		if table.Lo <= 'Z' {
-			continue
-		}
-		letterIDX = i
-		break
-	}
-	letter16 := true
-
-	var nextComponent uint32 = 36
-	for nextComponent < BaseMax {
-
-		//fmt.Printf("component %v numberIDX %v %v letterIDX %v %v\n", nextComponent, number16, numberIDX, letter16, letterIDX)
-		var nextNumber uint32
-		if number16 {
-			if numberIDX < len(unicode.Number.R16) {
-				nextNumber = uint32(unicode.Number.R16[numberIDX].Lo)
-			} else {
-				number16 = false
-				nextNumber = unicode.Number.R32[0].Lo
-				numberIDX = 0
-			}
-		} else {
-			if numberIDX < len(unicode.Number.R32) {
-				nextNumber = unicode.Number.R32[numberIDX].Lo
-			} else {
-				nextNumber = unicode.MaxRune
-			}
-		}
-
-		var nextLetter uint32
-		if letter16 {
-			if letterIDX < len(unicode.Letter.R16) {
-				nextLetter = uint32(unicode.Letter.R16[letterIDX].Lo)
-			} else {
-				letter16 = false
-				nextLetter = unicode.Letter.R32[0].Lo
-				letterIDX = 0
-			}
-		} else {
-			nextLetter = unicode.Letter.R32[letterIDX].Lo
-		}
-
-		var table unicode.Range32
-		if nextNumber < nextLetter {
-			if number16 {
-				t := unicode.Number.R16[numberIDX]
-				table.Lo = uint32(t.Lo)
-				table.Hi = uint32(t.Hi)
-				table.Stride = uint32(t.Stride)
-			} else {
-				t := unicode.Number.R32[numberIDX]
-				table.Lo = t.Lo
-				table.Hi = t.Hi
-				table.Stride = t.Stride
-			}
-			numberIDX++
-		} else if nextLetter < nextNumber {
-			if letter16 {
-				t := unicode.Letter.R16[letterIDX]
-				table.Lo = uint32(t.Lo)
-				table.Hi = uint32(t.Hi)
-				table.Stride = uint32(t.Stride)
-			} else {
-				t := unicode.Letter.R32[letterIDX]
-				table.Lo = t.Lo
-				table.Hi = t.Hi
-				table.Stride = t.Stride
-			}
-			letterIDX++
-		} else {
-			panic("unicode range tables corruption")
-		}
-		tableLen := (table.Hi-table.Lo)/table.Stride + 1
-		formatMap = append(
-			formatMap,
-			formatRange{
-				startComponent: uint16(nextComponent),
-				rangeLen:       uint16(tableLen),
-				startChar:      rune(table.Lo),
-				charStride:     uint16(table.Stride),
-			},
-		)
-		fmt.Printf("formatMap append %v %v '%c' %v\n", nextComponent, tableLen, table.Lo, table.Stride)
-		nextComponent += tableLen
+	if comp < BaseMax {
+		panic("unicode character exaustion")
 	}
 
 }
@@ -171,65 +99,22 @@ func formatChar(kc uint32) rune {
 	if kc > 0xFFFF {
 		panic("key component out of range")
 	}
-	var charCount uint32
-
-	for _, table := range unicode.Letter.R16 {
-		tableLen := uint32((table.Hi-table.Lo)/table.Stride + 1)
-		if tableLen < tableLenMin {
-			continue
+	for _, fr := range formatMap {
+		if kc < uint32(fr.component) + uint32(fr.length) {
+			return fr.character + rune(kc - uint32(fr.component))
 		}
-		//fmt.Printf("R16 table len %v\n", tableLen)
-		if tableLen > kc || charCount > kc-tableLen {
-			return rune(uint32(table.Lo) + (kc-charCount)*uint32(table.Stride))
-		}
-		charCount += uint32(tableLen)
 	}
-
-	for _, table := range unicode.Letter.R32 {
-		tableLen := uint32((table.Hi-table.Lo)/table.Stride + 1)
-		if tableLen < tableLenMin {
-			continue
-		}
-		//fmt.Printf("R32 table len %v\n", tableLen)
-		if tableLen > kc || charCount > kc-tableLen {
-			return rune(uint32(table.Lo) + (kc-charCount)*uint32(table.Stride))
-		}
-		charCount += uint32(tableLen)
-	}
-
-	panic("character exaustion")
+	panic("format character exaustion")
 }
 
 // parseChar converts a character to its key component value.
 func parseChar(r rune) (uint32, error) {
-
-	c := uint32(r)
-	var charCount uint32
-
-	for _, table := range unicode.Letter.R16 {
-		tableLen := uint32((table.Hi-table.Lo)/table.Stride + 1)
-		if tableLen < tableLenMin {
-			continue
+	for _, fr := range formatMap {
+		if r < fr.character + rune(fr.length) {
+			return uint32(fr.component) + uint32(r - fr.character), nil
 		}
-		if uint32(table.Hi) >= c {
-			return charCount + (c-uint32(table.Lo))/uint32(table.Stride), nil
-		}
-		charCount += uint32(tableLen)
 	}
-
-	for _, table := range unicode.Letter.R32 {
-		tableLen := uint32((table.Hi-table.Lo)/table.Stride + 1)
-		if tableLen < tableLenMin {
-			continue
-		}
-		if table.Hi >= c {
-			return charCount + (c-table.Lo)/table.Stride, nil
-		}
-		charCount += uint32(tableLen)
-	}
-
-	return 0, errors.New("unknown character")
-
+	return 0, errors.New("unknown format character")
 }
 
 // listKeyComponentsInDir returns all key components found in a subdirectory,
