@@ -21,39 +21,100 @@ import "github.com/coolparadox/go/sort/uint32slice"
 import "errors"
 import "fmt"
 import "os"
+import "unicode"
+import "unicode/utf8"
 
-// formatSequence contains characters to be used for mapping between
-// filesystem names and components of keys.
-const formatSequence = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const tableLenMin = 1
 
-// Mapping between characters and positions in formatSequence.
-var (
-	formatMap map[uint32]rune
-	parseMap  map[rune]uint32
-)
+func FormatChar(kc uint32) rune {
+	return formatChar(kc)
+}
+
+func ParseChar(r rune) (uint32, error) {
+	return parseChar(r)
+}
+
+type formatRange struct {
+	component uint16
+	character rune
+	length    uint16
+}
+
+var formatMap []formatRange
 
 func init() {
-	if len(formatSequence) > BaseMax {
-		panic("format sequence does not contain enough characters")
+
+	// Initialize key component character mapping.
+	formatMap = make([]formatRange, 0)
+	formatMap = append(
+		formatMap,
+		formatRange{
+			component: 0,
+			character: '0',
+			length:    10,
+		},
+	)
+	formatMap = append(
+		formatMap,
+		formatRange{
+			component: 10,
+			character: 'A',
+			length:    26,
+		},
+	)
+	var comp uint32 = 36
+	var char rune = 'Z' + 1
+	var prevChar rune = unicode.MaxRune
+	var fr formatRange
+	for ; char < unicode.MaxRune; char++ {
+		if !unicode.IsPrint(char) {
+			continue
+		}
+		if comp < MaxBase && char == prevChar+1 {
+			fr.length++
+		} else {
+			if fr.length != 0 {
+				formatMap = append(formatMap, fr)
+				//fmt.Printf("formatMap append %v '%c' (%U) %v\n", fr.component, fr.character, fr.character, fr.length)
+			}
+			if comp >= MaxBase {
+				break
+			}
+			fr.component = uint16(comp)
+			fr.character = char
+			fr.length = 1
+		}
+		prevChar = char
+		comp++
 	}
-	for i, c1 := range formatSequence {
-		for j, c2 := range formatSequence {
-			if j <= i {
-				continue
-			}
-			if c1 == c2 {
-				panic(fmt.Sprintf("non unique character in format sequence: '%c'", c1))
-			}
+	if comp < MaxBase {
+		panic("unicode character exaustion")
+	}
+
+}
+
+// formatChar converts a key component to its character representation in the
+// filesystem.
+func formatChar(kc uint32) rune {
+	if kc > 0xFFFF {
+		panic("key component out of range")
+	}
+	for _, fr := range formatMap {
+		if kc < uint32(fr.component)+uint32(fr.length) {
+			return fr.character + rune(kc-uint32(fr.component))
 		}
 	}
-	mapLen := len(formatSequence)
-	formatMap = make(map[uint32]rune, mapLen)
-	parseMap = make(map[rune]uint32, mapLen)
-	for k := 0; k < mapLen; k++ {
-		key := rune(formatSequence[k])
-		formatMap[uint32(k)] = key
-		parseMap[key] = uint32(k)
+	panic("format character exaustion")
+}
+
+// parseChar converts a character to its key component value.
+func parseChar(r rune) (uint32, error) {
+	for _, fr := range formatMap {
+		if r < fr.character+rune(fr.length) {
+			return uint32(fr.component) + uint32(r-fr.character), nil
+		}
 	}
+	return 0, errors.New("unknown format character")
 }
 
 // listKeyComponentsInDir returns all key components found in a subdirectory,
@@ -76,12 +137,15 @@ func listKeyComponentsInDir(dir string, keyBase uint32) ([]uint32, error) {
 	}
 	for _, name := range names {
 		// If name is a key character, store its component value for answer.
-		if len(name) > 1 {
+		char, n := utf8.DecodeRuneInString(name)
+		if char == utf8.RuneError {
 			continue
 		}
-		char := rune(name[0])
-		component, ok := parseMap[char]
-		if !ok {
+		if n < len(name) {
+			continue
+		}
+		component, err := parseChar(char)
+		if err != nil {
 			continue
 		}
 		if component >= keyBase {

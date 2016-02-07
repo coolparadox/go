@@ -26,6 +26,7 @@ import "math/rand"
 import "time"
 import "io"
 import "flag"
+import "fmt"
 
 var myPath string
 var howManySaves uint
@@ -39,19 +40,34 @@ func init() {
 
 var db concur.Concur
 
+func TestFormatChar(t *testing.T) {
+	var k uint32
+	for k = 0; k < concur.MaxBase; k++ {
+		c := concur.FormatChar(k)
+		k2, err := concur.ParseChar(c)
+		if err != nil {
+			t.Fatalf("parseChar failed for character '%c' (%U): %s", c, c, err)
+		}
+		if k2 != k {
+			t.Fatal("parsing mismatch for component character '%c': expected %v, got %v", c, k, k2)
+		}
+	}
+}
+
 func TestInit(t *testing.T) {
+	t.Logf("path to concur db = '%s'", myPath)
+	t.Logf("save test count = %v", howManySaves)
+	t.Logf("numeric base of key components = %v", keyBase)
 	var err error
 	err = os.MkdirAll(myPath, 0755)
 	if err != nil {
 		t.Fatalf("cannot create directory '%s': %s", myPath, err)
 	}
-	t.Logf("path to concur db = '%s'", myPath)
-	t.Logf("save test count = %v", howManySaves)
 	rand.Seed(time.Now().Unix())
 
 }
 
-func TestNewEmpty(t *testing.T) {
+func TestWipe(t *testing.T) {
 	var err error
 	err = concur.Wipe(myPath)
 	if err != nil {
@@ -66,11 +82,31 @@ func TestNewEmpty(t *testing.T) {
 	if err != io.EOF {
 		t.Fatalf("concur.Wipe did not empty directory '%s'", myPath)
 	}
+}
+
+func TestFilesystem(t *testing.T) {
+	var k uint32
+	for k = 0; k < concur.MaxBase; k++ {
+		c := concur.FormatChar(k)
+		targetPath := fmt.Sprintf("%s%c%c", myPath, os.PathSeparator, c)
+		f, err := os.Create(targetPath)
+		if err != nil {
+			t.Fatalf("filesystem does not like character '%c' (%U): %s", c, c, err)
+		}
+		f.Close()
+		err = os.Remove(targetPath)
+		if err != nil {
+			t.Fatalf("cannot remove file '%s': %s", targetPath, err)
+		}
+	}
+}
+
+func TestNewEmpty(t *testing.T) {
+	var err error
 	db, err = concur.New(myPath, uint32(keyBase))
 	if err != nil {
 		t.Fatalf("concur.New failed: %s", err)
 	}
-
 }
 
 func TestSaveAs(t *testing.T) {
@@ -92,11 +128,11 @@ func TestSaveAs(t *testing.T) {
 		t.Fatalf("save & load mismatch: saved %v loaded %v", sample, loaded)
 	}
 
-	err = db.SaveAs(concur.KeyMax, sample)
+	err = db.SaveAs(concur.MaxKey, sample)
 	if err != nil {
 		t.Fatalf("concur.SaveAs failed: %s", err)
 	}
-	loaded, err = db.Load(concur.KeyMax)
+	loaded, err = db.Load(concur.MaxKey)
 	if err != nil {
 		t.Fatalf("concur.Load failed: %s", err)
 	}
@@ -109,9 +145,9 @@ func TestSaveAs(t *testing.T) {
 		t.Fatalf("concur.Erase(0) failed: $s", err)
 	}
 
-	err = db.Erase(concur.KeyMax)
+	err = db.Erase(concur.MaxKey)
 	if err != nil {
-		t.Fatalf("concur.Erase(concur.KeyMax) failed: $s", err)
+		t.Fatalf("concur.Erase(concur.MaxKey) failed: $s", err)
 	}
 
 }
@@ -134,7 +170,7 @@ func TestSaveMany(t *testing.T) {
 			// test concur.SaveAs
 			for {
 				key = rand.Uint32()
-				if key >= concur.KeyMax {
+				if key >= concur.MaxKey {
 					continue
 				}
 				_, ok := savedKeys[key]
@@ -185,7 +221,7 @@ func TestKeyList(t *testing.T) {
 	for ok {
 		//t.Logf("found key: %v", key)
 		receivedKeys = append(receivedKeys, key)
-		if key >= concur.KeyMax {
+		if key >= concur.MaxKey {
 			break
 		}
 		key, ok, err = db.SmallestKeyNotLessThan(key + 1)

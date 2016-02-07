@@ -25,7 +25,7 @@ Use New to create or open a collection of key/value pairs in the
 filesystem. The collection can then be managed by methods of the collection
 handler.
 
-	db, _ := concur.New("/path/to/my/collection")
+	db, _ := concur.New("/path/to/my/collection", 0)
 	key, _ := db.Save(byte[]{1,3,5,7,9}) // store data in a new key
 	val, _ := db.Load(key) // retrieve value of a key
 	db.SaveAs(key, byte[]{0,2,4,6,8}) // update existent key
@@ -38,7 +38,8 @@ length.
 
 Apart from other storage implementations that map a single file as the
 database, this package takes an experimental approach where keys are managed
-using filesystem subdirectories. Therefore the filesystem chosen for storage
+using filesystem subdirectories (see Key Management below).
+Therefore the filesystem chosen for storage
 is the real engine that maps keys to values, and their designers are the ones
 who must take credit if this package happens to achieve satisfactory
 performance.
@@ -50,6 +51,35 @@ flush updates to disk (eg sync, umount) to guarantee that all updates to the
 collection are written to disk.
 
 Wipe method can take a long time to return.
+
+Key Management
+
+(This is an explanation of how 32 bit keys are internally mapped to values
+by the implementation. You don't really need to know it for using concur;
+feel free to skip this section.)
+
+Each key is uniquely associated with a distinct file in the filesystem.
+The path to the file is derived from the key, eg. a key of 0x12345678,
+assuming the numeric base of key components is set to 16, is the file
+1/2/3/4/5/6/7/8 under the database directory. The value associated with the
+key is the content of the file. Conversely, keys in the database are retrieved
+by parsing the path of existent files.
+
+When creating a new database, user may choose the numeric base of key
+components. This value ultimately defines how many directories are allowed to
+exist in each subdirectory level towards reaching associated files.
+The base can range from MinBase (2, resulting in a level depth of 32 for
+holding a 32 bit key) to MaxBase (0x10000, giving a level depth of only 2).
+
+Whether the numeric base chosen, directories and files are named by single
+unicode characters, where the first 10 in the mapping range are decimal digits
+from 0 to 9, and the next 26 are upper case letters from A to Z.
+Thus component bases up to 36 are guaranteed to be mapped by characters in the
+ascii range.
+
+It's worth noting that all this key composition stuff happens transparently
+to the user. Poking around the directory of a concur collection, despite it's
+cool for the sake of curiosity, is not required for making use of this package.
 
 Wish List
 
@@ -66,14 +96,26 @@ import "io"
 import "log"
 import "io/ioutil"
 
-// KeyMax represents the maximum value of a key.
-const KeyMax = 0xFFFFFFFF
+// MaxKey represents the maximum value of a key.
+const MaxKey = 0xFFFFFFFF
 
-// BaseMin and BaseMax define the range of possible values for the numeric base
+// MinBase and MaxBase define the range of possible values for the numeric base
 // of key components in the filesystem (see parameter base in New).
 const (
-	BaseMin = 2
-	BaseMax = 62
+	MinBase = 2
+	MaxBase = 0x10000
+)
+
+// Depth*Base are convenience values of numeric bases of key components to be
+// used when creating a new database.
+// These values give the most efficient occupation of subdirectories in the
+// filesystem (see Key Management).
+const (
+	Depth2Base  = 0x10000
+	Depth4Base  = 0x100
+	Depth8Base  = 0x10
+	Depth16Base = 0x4
+	Depth32Base = 0x2
 )
 
 // Concur handles a collection of byte sequences stored in a directory of
@@ -88,6 +130,10 @@ type Concur struct {
 // concurMarkLabel is the file checked for existence of a concur database in a
 // directory.
 const concurMarkLabel string = ".concur"
+
+// fullMarkLabel is the file that marks if a subdirectory is completely full
+// of key components.
+const fullMarkLabel string = ".full"
 
 // concurLabelExists answers if there is a concur label file at the top level
 // of the directory pointed by an initialized collection.
@@ -136,8 +182,9 @@ func bytesToUint32(b []byte) (uint32, error) {
 // package concur, it must be empty.
 //
 // Parameter base is the numeric base of key components for naming files and
-// subdirectories under the collection. It has effect only during creation
-// of a collection. Pass zero for a sane default.
+// subdirectories under the collection (see Key Management for details).
+// It has effect only during creation of a collection.
+// Pass zero for a sane default.
 func New(dir string, base uint32) (Concur, error) {
 	if !path.IsAbs(dir) {
 		return Concur{}, errors.New(fmt.Sprintf("dir '%s' is not absolute", dir))
@@ -180,14 +227,14 @@ func New(dir string, base uint32) (Concur, error) {
 		if err != nil {
 			return Concur{}, errors.New(fmt.Sprintf("cannot parse base from concur mark file: %s", err))
 		}
-		if base < BaseMin || base > BaseMax {
+		if base < MinBase || base > MaxBase {
 			panic(fmt.Sprintf("key base value from concur mark file is out of range: %v", base))
 		}
 	} else {
 		if base == 0 {
-			base = 36
+			base = Depth8Base
 		}
-		if base < BaseMin || base > BaseMax {
+		if base < MinBase || base > MaxBase {
 			return Concur{}, errors.New(fmt.Sprintf("base parameter is out of range"))
 		}
 		dFile, err := os.Open(dir)
@@ -212,7 +259,7 @@ func New(dir string, base uint32) (Concur, error) {
 	}
 	var k uint32
 	var depth int
-	for k = KeyMax; k > 0; k /= base {
+	for k = MaxKey; k > 0; k /= base {
 		depth++
 	}
 	return Concur{
@@ -286,7 +333,7 @@ func (r Concur) Erase(key uint32) error {
 	}
 	// Erase full marks up to top level.
 	for level := 1; level <= 6; level++ {
-		fullMarkPath := fmt.Sprintf("%s%c%s", keyComponentPath(br, level, r.dir, r.keyDepth), os.PathSeparator, "_")
+		fullMarkPath := fmt.Sprintf("%s%c%s", keyComponentPath(br, level, r.dir, r.keyDepth), os.PathSeparator, fullMarkLabel)
 		_ = os.RemoveAll(fullMarkPath)
 	}
 	return nil
@@ -399,7 +446,7 @@ func (r Concur) SmallestKeyNotLessThan(key uint32) (uint32, bool, error) {
 				_ = "breakpoint"
 				return 0, false, nil
 			}
-			if k < KeyMax {
+			if k < MaxKey {
 				k++
 			} else {
 				// Key range limit reached.
@@ -463,7 +510,7 @@ func (r Concur) Save(value []byte) (uint32, error) {
 		if err != nil {
 			return 0, errors.New(fmt.Sprintf("cannot create directory '%s': %s", targetDir, err))
 		}
-		targetChar := formatMap[br[0]]
+		targetChar := formatChar(br[0])
 		targetPath = joinPathChar(targetDir, targetChar)
 		lockFile, err := lockDirForWrite(targetDir)
 		if err != nil {

@@ -74,7 +74,7 @@ func composeKey(br brokenKey, keyBase uint32, keyDepth int) (uint32, error) {
 			return 0, errors.New(fmt.Sprintf("impossible broken key '%v'", br))
 		}
 	}
-	if answer > KeyMax {
+	if answer > MaxKey {
 		return 0, errors.New(fmt.Sprintf("impossible broken key '%v'", br))
 	}
 	return answer, nil
@@ -85,7 +85,7 @@ func composeKey(br brokenKey, keyBase uint32, keyDepth int) (uint32, error) {
 func keyComponentPath(br brokenKey, level int, baseDir string, keyDepth int) string {
 	rs := make([]rune, 0, 2*keyDepth)
 	for i := keyDepth - 1; i >= level; i-- {
-		rs = append(rs, os.PathSeparator, formatMap[br[i]])
+		rs = append(rs, os.PathSeparator, formatChar(br[i]))
 	}
 	return fmt.Sprintf("%s%s", baseDir, string(rs))
 }
@@ -98,7 +98,7 @@ func keyComponentPath(br brokenKey, level int, baseDir string, keyDepth int) str
 func formatPath(key uint32, baseDir string, keyBase uint32, keyDepth int) (string, rune, brokenKey) {
 	br := decomposeKey(key, keyBase, keyDepth)
 	dir := keyComponentPath(br, 1, baseDir, keyDepth)
-	return dir, formatMap[br[0]], br
+	return dir, formatChar(br[0]), br
 }
 
 // joinPathChar adds a character to a filesystem path, after appending the
@@ -150,7 +150,7 @@ func findFreeKeyFromLevel(from brokenKey, level int, baseDir string, keyBase uin
 	var err error
 	br := newBrokenKey(keyDepth)
 	copy(br, from)
-	fullMarkPath := fmt.Sprintf("%s%c%s", keyComponentPath(br, level+1, baseDir, keyDepth), os.PathSeparator, "_")
+	fullMarkPath := fmt.Sprintf("%s%c%s", keyComponentPath(br, level+1, baseDir, keyDepth), os.PathSeparator, fullMarkLabel)
 	_, err = os.Stat(fullMarkPath)
 	if err == nil {
 		// There is a full mark a this level.
