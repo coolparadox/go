@@ -26,7 +26,6 @@ import "math/rand"
 import "time"
 import "io"
 import "flag"
-import "fmt"
 
 var myPath string
 var howManySaves uint
@@ -39,20 +38,6 @@ func init() {
 }
 
 var db concur.Concur
-
-func TestFormatChar(t *testing.T) {
-	var k uint32
-	for k = 0; k < concur.MaxBase; k++ {
-		c := concur.FormatChar(k)
-		k2, err := concur.ParseChar(c)
-		if err != nil {
-			t.Fatalf("parseChar failed for character '%c' (%U): %s", c, c, err)
-		}
-		if k2 != k {
-			t.Fatal("parsing mismatch for component character '%c': expected %v, got %v", c, k, k2)
-		}
-	}
-}
 
 func TestInit(t *testing.T) {
 	t.Logf("path to concur db = '%s'", myPath)
@@ -81,23 +66,6 @@ func TestWipe(t *testing.T) {
 	_, err = file.Readdir(1)
 	if err != io.EOF {
 		t.Fatalf("concur.Wipe did not empty directory '%s'", myPath)
-	}
-}
-
-func TestFilesystem(t *testing.T) {
-	var k uint32
-	for k = 0; k < concur.MaxBase; k++ {
-		c := concur.FormatChar(k)
-		targetPath := fmt.Sprintf("%s%c%c", myPath, os.PathSeparator, c)
-		f, err := os.Create(targetPath)
-		if err != nil {
-			t.Fatalf("filesystem does not like character '%c' (%U): %s", c, c, err)
-		}
-		f.Close()
-		err = os.Remove(targetPath)
-		if err != nil {
-			t.Fatalf("cannot remove file '%s': %s", targetPath, err)
-		}
 	}
 }
 

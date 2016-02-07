@@ -101,18 +101,6 @@ const MaxKey = 0xFFFFFFFF
 ```
 MaxKey represents the maximum value of a key.
 
-#### func  FormatChar
-
-```go
-func FormatChar(kc uint32) rune
-```
-
-#### func  ParseChar
-
-```go
-func ParseChar(r rune) (uint32, error)
-```
-
 #### func  Wipe
 
 ```go

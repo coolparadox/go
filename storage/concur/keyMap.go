@@ -26,14 +26,6 @@ import "unicode/utf8"
 
 const tableLenMin = 1
 
-func FormatChar(kc uint32) rune {
-	return formatChar(kc)
-}
-
-func ParseChar(r rune) (uint32, error) {
-	return parseChar(r)
-}
-
 type formatRange struct {
 	component uint16
 	character rune
