@@ -25,7 +25,7 @@ Use New to create or open a collection of key/value pairs in the
 filesystem. The collection can then be managed by methods of the collection
 handler.
 
-	db, _ := concur.New("/path/to/my/collection")
+	db, _ := concur.New("/path/to/my/collection", 0)
 	key, _ := db.Save(byte[]{1,3,5,7,9}) // store data in a new key
 	val, _ := db.Load(key) // retrieve value of a key
 	db.SaveAs(key, byte[]{0,2,4,6,8}) // update existent key
@@ -66,14 +66,24 @@ import "io"
 import "log"
 import "io/ioutil"
 
-// KeyMax represents the maximum value of a key.
-const KeyMax = 0xFFFFFFFF
+// MaxKey represents the maximum value of a key.
+const MaxKey = 0xFFFFFFFF
 
-// BaseMin and BaseMax define the range of possible values for the numeric base
+// MinBase and MaxBase define the range of possible values for the numeric base
 // of key components in the filesystem (see parameter base in New).
 const (
-	BaseMin = 2
-	BaseMax = 0x10000
+	MinBase = 2
+	MaxBase = 0x10000
+)
+
+// Numeric bases of key components that give the best use of subdirectories
+// in the filesystem for key management.
+const (
+	Depth2Base = 65536
+	Depth4Base = 256
+	Depth8Base = 16
+	Depth16Base = 4
+	Depth32Base = 2
 )
 
 // Concur handles a collection of byte sequences stored in a directory of
@@ -184,14 +194,14 @@ func New(dir string, base uint32) (Concur, error) {
 		if err != nil {
 			return Concur{}, errors.New(fmt.Sprintf("cannot parse base from concur mark file: %s", err))
 		}
-		if base < BaseMin || base > BaseMax {
+		if base < MinBase || base > MaxBase {
 			panic(fmt.Sprintf("key base value from concur mark file is out of range: %v", base))
 		}
 	} else {
 		if base == 0 {
-			base = 36
+			base = Depth8Base
 		}
-		if base < BaseMin || base > BaseMax {
+		if base < MinBase || base > MaxBase {
 			return Concur{}, errors.New(fmt.Sprintf("base parameter is out of range"))
 		}
 		dFile, err := os.Open(dir)
@@ -216,7 +226,7 @@ func New(dir string, base uint32) (Concur, error) {
 	}
 	var k uint32
 	var depth int
-	for k = KeyMax; k > 0; k /= base {
+	for k = MaxKey; k > 0; k /= base {
 		depth++
 	}
 	return Concur{
@@ -403,7 +413,7 @@ func (r Concur) SmallestKeyNotLessThan(key uint32) (uint32, bool, error) {
 				_ = "breakpoint"
 				return 0, false, nil
 			}
-			if k < KeyMax {
+			if k < MaxKey {
 				k++
 			} else {
 				// Key range limit reached.

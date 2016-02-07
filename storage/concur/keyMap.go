@@ -70,14 +70,14 @@ func init() {
 		if !unicode.IsPrint(char) {
 			continue
 		}
-		if comp < BaseMax && char == prevChar+1 {
+		if comp < MaxBase && char == prevChar+1 {
 			fr.length++
 		} else {
 			if fr.length != 0 {
 				formatMap = append(formatMap, fr)
 				//fmt.Printf("formatMap append %v '%c' (%U) %v\n", fr.component, fr.character, fr.character, fr.length)
 			}
-			if comp >= BaseMax {
+			if comp >= MaxBase {
 				break
 			}
 			fr.component = uint16(comp)
@@ -87,7 +87,7 @@ func init() {
 		prevChar = char
 		comp++
 	}
-	if comp < BaseMax {
+	if comp < MaxBase {
 		panic("unicode character exaustion")
 	}
 

@@ -74,7 +74,7 @@ func composeKey(br brokenKey, keyBase uint32, keyDepth int) (uint32, error) {
 			return 0, errors.New(fmt.Sprintf("impossible broken key '%v'", br))
 		}
 	}
-	if answer > KeyMax {
+	if answer > MaxKey {
 		return 0, errors.New(fmt.Sprintf("impossible broken key '%v'", br))
 	}
 	return answer, nil

@@ -42,7 +42,7 @@ var db concur.Concur
 
 func TestFormatChar(t *testing.T) {
 	var k uint32
-	for k = 0; k < concur.BaseMax; k++ {
+	for k = 0; k < concur.MaxBase; k++ {
 		c := concur.FormatChar(k)
 		k2, err := concur.ParseChar(c)
 		if err != nil {
@@ -86,7 +86,7 @@ func TestWipe(t *testing.T) {
 
 func TestFilesystem(t *testing.T) {
 	var k uint32
-	for k = 0; k < concur.BaseMax; k++ {
+	for k = 0; k < concur.MaxBase; k++ {
 		c := concur.FormatChar(k)
 		targetPath := fmt.Sprintf("%s%c%c", myPath, os.PathSeparator, c)
 		f, err := os.Create(targetPath)
@@ -128,11 +128,11 @@ func TestSaveAs(t *testing.T) {
 		t.Fatalf("save & load mismatch: saved %v loaded %v", sample, loaded)
 	}
 
-	err = db.SaveAs(concur.KeyMax, sample)
+	err = db.SaveAs(concur.MaxKey, sample)
 	if err != nil {
 		t.Fatalf("concur.SaveAs failed: %s", err)
 	}
-	loaded, err = db.Load(concur.KeyMax)
+	loaded, err = db.Load(concur.MaxKey)
 	if err != nil {
 		t.Fatalf("concur.Load failed: %s", err)
 	}
@@ -145,9 +145,9 @@ func TestSaveAs(t *testing.T) {
 		t.Fatalf("concur.Erase(0) failed: $s", err)
 	}
 
-	err = db.Erase(concur.KeyMax)
+	err = db.Erase(concur.MaxKey)
 	if err != nil {
-		t.Fatalf("concur.Erase(concur.KeyMax) failed: $s", err)
+		t.Fatalf("concur.Erase(concur.MaxKey) failed: $s", err)
 	}
 
 }
@@ -170,7 +170,7 @@ func TestSaveMany(t *testing.T) {
 			// test concur.SaveAs
 			for {
 				key = rand.Uint32()
-				if key >= concur.KeyMax {
+				if key >= concur.MaxKey {
 					continue
 				}
 				_, ok := savedKeys[key]
@@ -221,7 +221,7 @@ func TestKeyList(t *testing.T) {
 	for ok {
 		//t.Logf("found key: %v", key)
 		receivedKeys = append(receivedKeys, key)
-		if key >= concur.KeyMax {
+		if key >= concur.MaxKey {
 			break
 		}
 		key, ok, err = db.SmallestKeyNotLessThan(key + 1)
