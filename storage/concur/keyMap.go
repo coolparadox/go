@@ -100,8 +100,8 @@ func formatChar(kc uint32) rune {
 		panic("key component out of range")
 	}
 	for _, fr := range formatMap {
-		if kc < uint32(fr.component) + uint32(fr.length) {
-			return fr.character + rune(kc - uint32(fr.component))
+		if kc < uint32(fr.component)+uint32(fr.length) {
+			return fr.character + rune(kc-uint32(fr.component))
 		}
 	}
 	panic("format character exaustion")
@@ -110,8 +110,8 @@ func formatChar(kc uint32) rune {
 // parseChar converts a character to its key component value.
 func parseChar(r rune) (uint32, error) {
 	for _, fr := range formatMap {
-		if r < fr.character + rune(fr.length) {
-			return uint32(fr.component) + uint32(r - fr.character), nil
+		if r < fr.character+rune(fr.length) {
+			return uint32(fr.component) + uint32(r-fr.character), nil
 		}
 	}
 	return 0, errors.New("unknown format character")

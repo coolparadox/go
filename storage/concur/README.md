@@ -11,7 +11,7 @@ generation.
 Use New to create or open a collection of key/value pairs in the filesystem. The
 collection can then be managed by methods of the collection handler.
 
-    db, _ := concur.New("/path/to/my/collection")
+    db, _ := concur.New("/path/to/my/collection", 0)
     key, _ := db.Save(byte[]{1,3,5,7,9}) // store data in a new key
     val, _ := db.Load(key) // retrieve value of a key
     db.SaveAs(key, byte[]{0,2,4,6,8}) // update existent key
@@ -25,9 +25,10 @@ length.
 
 Apart from other storage implementations that map a single file as the database,
 this package takes an experimental approach where keys are managed using
-filesystem subdirectories. Therefore the filesystem chosen for storage is the
-real engine that maps keys to values, and their designers are the ones who must
-take credit if this package happens to achieve satisfactory performance.
+filesystem subdirectories (see Key Management below). Therefore the filesystem
+chosen for storage is the real engine that maps keys to values, and their
+designers are the ones who must take credit if this package happens to achieve
+satisfactory performance.
 
 Although concur write methods commit changes to filesystem immediately on
 successful return, the operating system can make use of memory buffers for
@@ -38,6 +39,35 @@ collection are written to disk.
 Wipe method can take a long time to return.
 
 
+### Key Management
+
+(This is an explanation of how 32 bit keys are internally mapped to values by
+the implementation. You don't really need to know it for using concur; feel free
+to skip this section.)
+
+Each key is uniquely associated with a distinct file in the filesystem. The path
+to the file is derived from the key, eg. a key of 0x12345678, assuming the
+numeric base of key components is set to 16, is the file 1/2/3/4/5/6/7/8 under
+the database directory. The value associated with the key is the content of the
+file. Conversely, keys in the database are retrieved by parsing the path of
+existent files.
+
+When creating a new database, user may choose the numeric base of key
+components. This value ultimately defines how many directories are allowed to
+exist in each subdirectory level towards reaching associated files. The base can
+range from MinBase (2, resulting in a level depth of 32 for holding a 32 bit
+key) to MaxBase (0x10000, giving a level depth of only 2).
+
+Whether the numeric base chosen, directories and files are named by single
+unicode characters, where the first 10 in the mapping range are decimal digits
+from 0 to 9, and the next 26 are upper case letters from A to Z. Thus component
+bases up to 36 are guaranteed to be mapped by characters in the ascii range.
+
+It's worth noting that all this key composition stuff happens transparently to
+the user. Poking around the directory of a concur collection, despite it's cool
+for the sake of curiosity, is not required for making use of this package.
+
+
 ### Wish List
 
 Document filesystem guidelines for better performance with package concur.
@@ -46,17 +76,42 @@ Document filesystem guidelines for better performance with package concur.
 
 ```go
 const (
-	BaseMin = 2
-	BaseMax = 62
+	MinBase = 2
+	MaxBase = 0x10000
 )
 ```
-BaseMin and BaseMax define the range of possible values for the numeric base of
+MinBase and MaxBase define the range of possible values for the numeric base of
 key components in the filesystem (see parameter base in New).
 
 ```go
-const KeyMax = 0xFFFFFFFF
+const (
+	Depth2Base  = 0x10000
+	Depth4Base  = 0x100
+	Depth8Base  = 0x10
+	Depth16Base = 0x4
+	Depth32Base = 0x2
+)
 ```
-KeyMax represents the maximum value of a key.
+Depth*Base are convenience values of numeric bases of key components to be used
+when creating a new database. These values give the most efficient occupation of
+subdirectories in the filesystem (see Key Management).
+
+```go
+const MaxKey = 0xFFFFFFFF
+```
+MaxKey represents the maximum value of a key.
+
+#### func  FormatChar
+
+```go
+func FormatChar(kc uint32) rune
+```
+
+#### func  ParseChar
+
+```go
+func ParseChar(r rune) (uint32, error)
+```
 
 #### func  Wipe
 
@@ -93,8 +148,8 @@ the collection. If it's the first time this directory is used by package concur,
 it must be empty.
 
 Parameter base is the numeric base of key components for naming files and
-subdirectories under the collection. It has effect only during creation of a
-collection. Pass zero for a sane default.
+subdirectories under the collection (see Key Management for details). It has
+effect only during creation of a collection. Pass zero for a sane default.
 
 #### func (Concur) Erase
 
