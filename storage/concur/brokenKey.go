@@ -17,7 +17,6 @@
 
 package concur
 
-import "errors"
 import "fmt"
 import "os"
 import "io/ioutil"
@@ -47,7 +46,7 @@ func multiplyUint32(a, b uint32) (uint32, error) {
 	if a <= 1 || b <= 1 || c/b == a {
 		return c, nil
 	}
-	return 0, errors.New("overflow")
+	return 0, fmt.Errorf("overflow")
 }
 
 // addUint32 adds two uint32s with overflow detection.
@@ -56,7 +55,7 @@ func addUint32(a, b uint32) (uint32, error) {
 	if c >= a && c >= b {
 		return c, nil
 	}
-	return 0, errors.New("overflow")
+	return 0, fmt.Errorf("overflow")
 }
 
 // composeKey converts key components to a key.
@@ -67,15 +66,15 @@ func composeKey(br brokenKey, keyBase uint32, keyDepth int) (uint32, error) {
 	for i = keyDepth - 2; i >= 0; i-- {
 		answer, err = multiplyUint32(answer, keyBase)
 		if err != nil {
-			return 0, errors.New(fmt.Sprintf("impossible broken key '%v'", br))
+			return 0, fmt.Errorf("impossible broken key '%v'", br)
 		}
 		answer, err = addUint32(answer, br[i])
 		if err != nil {
-			return 0, errors.New(fmt.Sprintf("impossible broken key '%v'", br))
+			return 0, fmt.Errorf("impossible broken key '%v'", br)
 		}
 	}
 	if answer > MaxKey {
-		return 0, errors.New(fmt.Sprintf("impossible broken key '%v'", br))
+		return 0, fmt.Errorf("impossible broken key '%v'", br)
 	}
 	return answer, nil
 }
@@ -118,7 +117,7 @@ func smallestKeyNotLessThanInLevel(br brokenKey, level int, baseDir string, keyB
 	// Assume components are sorted in ascending order.
 	kcs, err := listKeyComponentsInDir(kcDir, keyBase)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("cannot list key components in '%s': %s", kcDir, err))
+		return nil, fmt.Errorf("cannot list key components in '%s': %s", kcDir, err)
 	}
 	for _, kc := range kcs {
 		// Discard component if it's smaller than the reference.

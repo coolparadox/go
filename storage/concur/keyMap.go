@@ -18,7 +18,6 @@
 package concur
 
 import "github.com/coolparadox/go/sort/uint32slice"
-import "errors"
 import "fmt"
 import "os"
 import "unicode"
@@ -106,7 +105,7 @@ func parseChar(r rune) (uint32, error) {
 			return uint32(fr.component) + uint32(r-fr.character), nil
 		}
 	}
-	return 0, errors.New("unknown format character")
+	return 0, fmt.Errorf("unknown format character")
 }
 
 // listKeyComponentsInDir returns all key components found in a subdirectory,
@@ -120,12 +119,12 @@ func listKeyComponentsInDir(dir string, keyBase uint32) ([]uint32, error) {
 		if os.IsNotExist(err) {
 			return answer, nil
 		}
-		return nil, errors.New(fmt.Sprintf("cannot open directory '%s': %s", dir, err))
+		return nil, fmt.Errorf("cannot open directory '%s': %s", dir, err)
 	}
 	defer f.Close()
 	names, err := f.Readdirnames(0)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("cannot read directory '%s': %s", dir, err))
+		return nil, fmt.Errorf("cannot read directory '%s': %s", dir, err)
 	}
 	for _, name := range names {
 		// If name is a key character, store its component value for answer.

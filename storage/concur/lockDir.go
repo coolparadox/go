@@ -17,7 +17,6 @@
 
 package concur
 
-import "errors"
 import "fmt"
 import "os"
 import "path"
@@ -38,12 +37,12 @@ func openLockFile(dir string) (*os.File, error) {
 func lockDirForWrite(dir string) (*os.File, error) {
 	lockFile, err := openLockFile(dir)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("cannot open lock file: %s", err))
+		return nil, fmt.Errorf("cannot open lock file: %s", err)
 	}
 	err = unix.Flock(int(lockFile.Fd()), unix.LOCK_EX)
 	if err != nil {
 		lockFile.Close()
-		return nil, errors.New(fmt.Sprintf("cannot place exclusive lock: %s", err))
+		return nil, fmt.Errorf("cannot place exclusive lock: %s", err)
 	}
 	return lockFile, nil
 }
@@ -54,12 +53,12 @@ func lockDirForWrite(dir string) (*os.File, error) {
 func lockDirForRead(dir string) (*os.File, error) {
 	lockFile, err := openLockFile(dir)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("cannot open lock file: %s", err))
+		return nil, fmt.Errorf("cannot open lock file: %s", err)
 	}
 	err = unix.Flock(int(lockFile.Fd()), unix.LOCK_SH)
 	if err != nil {
 		lockFile.Close()
-		return nil, errors.New(fmt.Sprintf("cannot place shared lock: %s", err))
+		return nil, fmt.Errorf("cannot place shared lock: %s", err)
 	}
 	return lockFile, nil
 }
