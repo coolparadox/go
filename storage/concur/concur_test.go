@@ -40,20 +40,6 @@ func init() {
 
 var db concur.Concur
 
-func TestFormatChar(t *testing.T) {
-	var k uint32
-	for k = 0; k < concur.MaxBase; k++ {
-		c := concur.FormatChar(k)
-		k2, err := concur.ParseChar(c)
-		if err != nil {
-			t.Fatalf("parseChar failed for character '%c' (%U): %s", c, c, err)
-		}
-		if k2 != k {
-			t.Fatal("parsing mismatch for component character '%c': expected %v, got %v", c, k, k2)
-		}
-	}
-}
-
 func TestInit(t *testing.T) {
 	t.Logf("path to concur db = '%s'", myPath)
 	t.Logf("save test count = %v", howManySaves)
@@ -81,23 +67,6 @@ func TestWipe(t *testing.T) {
 	_, err = file.Readdir(1)
 	if err != io.EOF {
 		t.Fatalf("concur.Wipe did not empty directory '%s'", myPath)
-	}
-}
-
-func TestFilesystem(t *testing.T) {
-	var k uint32
-	for k = 0; k < concur.MaxBase; k++ {
-		c := concur.FormatChar(k)
-		targetPath := fmt.Sprintf("%s%c%c", myPath, os.PathSeparator, c)
-		f, err := os.Create(targetPath)
-		if err != nil {
-			t.Fatalf("filesystem does not like character '%c' (%U): %s", c, c, err)
-		}
-		f.Close()
-		err = os.Remove(targetPath)
-		if err != nil {
-			t.Fatalf("cannot remove file '%s': %s", targetPath, err)
-		}
 	}
 }
 
@@ -209,25 +178,19 @@ func TestLoadMany(t *testing.T) {
 	}
 }
 
-func TestKeyList(t *testing.T) {
-	key, ok, err := db.SmallestKeyNotLessThan(0)
-	if err != nil {
-		t.Fatalf("concur.SmallestKeyNotLessThan failed: %s", err)
-	}
-	if !ok {
-		t.Fatalf("empty database!?")
-	}
+func TestKeyListAscending(t *testing.T) {
 	receivedKeys := make([]uint32, 0)
-	for ok {
+	key, err := db.FindKey(0, true)
+	for err == nil {
 		//t.Logf("found key: %v", key)
 		receivedKeys = append(receivedKeys, key)
 		if key >= concur.MaxKey {
 			break
 		}
-		key, ok, err = db.SmallestKeyNotLessThan(key + 1)
-		if err != nil {
-			t.Fatalf("concur.SmallestKeyNotLessThan failed: %s", err)
-		}
+		key, err = db.FindKey(key+1, true)
+	}
+	if err != nil && !concur.IsKeyNotFoundError(err) {
+		t.Fatalf("concur.FindKey failed: %s", err)
 	}
 	savedKeys := make([]uint32, 0)
 	for _, data := range savedData {
@@ -239,6 +202,38 @@ func TestKeyList(t *testing.T) {
 		t.Fatalf("received key length mismatch: received %v expected %v", rl, sl)
 	}
 	uint32slice.SortUint32s(savedKeys)
+	for i, rk := range receivedKeys {
+		sk := savedKeys[i]
+		if sk != rk {
+			t.Fatalf("received key mismatch: received %v expected %v", rk, sk)
+		}
+	}
+}
+
+func TestKeyListDescending(t *testing.T) {
+	receivedKeys := make([]uint32, 0)
+	key, err := db.FindKey(concur.MaxKey, false)
+	for err == nil {
+		//t.Logf("found key: %v", key)
+		receivedKeys = append(receivedKeys, key)
+		if key <= 0 {
+			break
+		}
+		key, err = db.FindKey(key-1, false)
+	}
+	if err != nil && !concur.IsKeyNotFoundError(err) {
+		t.Fatalf("concur.FindKey failed: %s", err)
+	}
+	savedKeys := make([]uint32, 0)
+	for _, data := range savedData {
+		savedKeys = append(savedKeys, data.key)
+	}
+	rl := len(receivedKeys)
+	sl := len(savedKeys)
+	if rl != sl {
+		t.Fatalf("received key length mismatch: received %v expected %v", rl, sl)
+	}
+	uint32slice.ReversedSortUint32s(savedKeys)
 	for i, rk := range receivedKeys {
 		sk := savedKeys[i]
 		if sk != rk {
@@ -276,4 +271,49 @@ func TestExists(t *testing.T) {
 			}
 		}
 	}
+}
+
+func Example() {
+
+	// Warning: error handling is purposely ignored in some places
+	// for didactic purposes.
+
+	// Create an empty database
+	dbPath := "/tmp/my_db"
+	os.MkdirAll(dbPath, 0755)
+	concur.Wipe(dbPath)
+	db, _ := concur.New(dbPath, 0)
+
+	// Save values in new keys
+	k1, _ := db.Save([]byte("goodbye"))
+	k2, _ := db.Save([]byte("cruel"))
+	k3, _ := db.Save([]byte("world"))
+
+	// Update, remove
+	db.SaveAs(k1, []byte("hello"))
+	db.Erase(k2)
+	db.SaveAs(k3, []byte("folks"))
+
+	// Loop through keys
+	key, err := db.FindKey(0, true)
+	for err == nil {
+		// Print value
+		val, _ := db.Load(key)
+		fmt.Printf("key %v: %s\n", key, string(val))
+		if key >= concur.MaxKey {
+			// Maximum key reached
+			break
+		}
+		// Find next existent key
+		key, err = db.FindKey(key+1, true)
+	}
+	if err != nil && !concur.IsKeyNotFoundError(err) {
+		// An abnormal error occurred
+		panic(err)
+	}
+
+	// Output:
+	// key 0: hello
+	// key 2: folks
+
 }

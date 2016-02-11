@@ -18,21 +18,12 @@
 package concur
 
 import "github.com/coolparadox/go/sort/uint32slice"
-import "errors"
 import "fmt"
 import "os"
 import "unicode"
 import "unicode/utf8"
 
 const tableLenMin = 1
-
-func FormatChar(kc uint32) rune {
-	return formatChar(kc)
-}
-
-func ParseChar(r rune) (uint32, error) {
-	return parseChar(r)
-}
 
 type formatRange struct {
 	component uint16
@@ -114,12 +105,12 @@ func parseChar(r rune) (uint32, error) {
 			return uint32(fr.component) + uint32(r-fr.character), nil
 		}
 	}
-	return 0, errors.New("unknown format character")
+	return 0, fmt.Errorf("unknown format character")
 }
 
 // listKeyComponentsInDir returns all key components found in a subdirectory,
-// sorted in ascending order.
-func listKeyComponentsInDir(dir string, keyBase uint32) ([]uint32, error) {
+// sorted in ascending or descending order.
+func listKeyComponentsInDir(dir string, keyBase uint32, ascending bool) ([]uint32, error) {
 	answer := make([]uint32, 0, keyBase)
 	// Iterate through all names in directory.
 	var err error
@@ -128,12 +119,12 @@ func listKeyComponentsInDir(dir string, keyBase uint32) ([]uint32, error) {
 		if os.IsNotExist(err) {
 			return answer, nil
 		}
-		return nil, errors.New(fmt.Sprintf("cannot open directory '%s': %s", dir, err))
+		return nil, fmt.Errorf("cannot open directory '%s': %s", dir, err)
 	}
 	defer f.Close()
 	names, err := f.Readdirnames(0)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("cannot read directory '%s': %s", dir, err))
+		return nil, fmt.Errorf("cannot read directory '%s': %s", dir, err)
 	}
 	for _, name := range names {
 		// If name is a key character, store its component value for answer.
@@ -154,6 +145,10 @@ func listKeyComponentsInDir(dir string, keyBase uint32) ([]uint32, error) {
 		answer = append(answer, component)
 	}
 	// Sort answer slice before returning it.
-	uint32slice.SortUint32s(answer)
+	if ascending {
+		uint32slice.SortUint32s(answer)
+	} else {
+		uint32slice.ReversedSortUint32s(answer)
+	}
 	return answer, nil
 }

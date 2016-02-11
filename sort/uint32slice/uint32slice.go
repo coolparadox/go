@@ -52,4 +52,7 @@ func (r Uint32Slice) Search(x uint32) int { return SearchUint32s(r, x) }
 func (r Uint32Slice) Sort() { sort.Sort(r) }
 
 // SortUint32s sorts a slice of uint32 in increasing order.
-func SortUint32s (s []uint32) { sort.Sort(Uint32Slice(s)) }
+func SortUint32s(s []uint32) { sort.Sort(Uint32Slice(s)) }
+
+// ReversedSortUint32s sorts a slice of uint32 in decreasing order.
+func ReversedSortUint32s(s []uint32) { sort.Sort(sort.Reverse(Uint32Slice(s))) }

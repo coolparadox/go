@@ -59,9 +59,10 @@ range from MinBase (2, resulting in a level depth of 32 for holding a 32 bit
 key) to MaxBase (0x10000, giving a level depth of only 2).
 
 Whether the numeric base chosen, directories and files are named by single
-unicode characters, where the first 10 in the mapping range are decimal digits
-from 0 to 9, and the next 26 are upper case letters from A to Z. Thus component
-bases up to 36 are guaranteed to be mapped by characters in the ascii range.
+unicode characters, where the first 10 ones in the mapping range are decimal
+digits from 0 to 9, and the next 26 ones are upper case letters from A to Z.
+Thus component bases up to 36 are guaranteed to be mapped by characters in the
+ascii range.
 
 It's worth noting that all this key composition stuff happens transparently to
 the user. Poking around the directory of a concur collection, despite it's cool
@@ -101,17 +102,12 @@ const MaxKey = 0xFFFFFFFF
 ```
 MaxKey represents the maximum value of a key.
 
-#### func  FormatChar
+#### func  IsKeyNotFoundError
 
 ```go
-func FormatChar(kc uint32) rune
+func IsKeyNotFoundError(e error) bool
 ```
-
-#### func  ParseChar
-
-```go
-func ParseChar(r rune) (uint32, error)
-```
+IsKeyNotFoundError tells if an error is of type KeyNotFoundError.
 
 #### func  Wipe
 
@@ -165,6 +161,16 @@ func (r Concur) Exists(key uint32) (bool, error)
 ```
 Exists verifies if a key exists.
 
+#### func (Concur) FindKey
+
+```go
+func (r Concur) FindKey(key uint32, ascending bool) (uint32, error)
+```
+FindKey takes a key and returns it if it exists. If key does not exist, the
+closest key in ascending (or descending) order is returned instead.
+
+A KeyNotFoundError is returned if there are no keys to be answered.
+
 #### func (Concur) Load
 
 ```go
@@ -189,12 +195,17 @@ func (r Concur) SaveAs(key uint32, value []byte) error
 ```
 SaveAs creates (or updates) a key with a new value.
 
-#### func (Concur) SmallestKeyNotLessThan
+#### type KeyNotFoundError
 
 ```go
-func (r Concur) SmallestKeyNotLessThan(key uint32) (uint32, bool, error)
+type KeyNotFoundError struct{}
 ```
-SmallestKeyNotLessThan takes a key and returns it if it exists. If key does not
-exist, the closest key in ascending order is returned instead.
 
-The bool return value tells if a key was found to be answered.
+KeyNotFoundError is returned by SmallestKeyNotLessThan and
+LargestKeyNotGreaterThan when there are no keys available.
+
+#### func (KeyNotFoundError) Error
+
+```go
+func (KeyNotFoundError) Error() string
+```

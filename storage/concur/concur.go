@@ -72,8 +72,8 @@ The base can range from MinBase (2, resulting in a level depth of 32 for
 holding a 32 bit key) to MaxBase (0x10000, giving a level depth of only 2).
 
 Whether the numeric base chosen, directories and files are named by single
-unicode characters, where the first 10 in the mapping range are decimal digits
-from 0 to 9, and the next 26 are upper case letters from A to Z.
+unicode characters, where the first 10 ones in the mapping range are decimal
+digits from 0 to 9, and the next 26 ones are upper case letters from A to Z.
 Thus component bases up to 36 are guaranteed to be mapped by characters in the
 ascii range.
 
@@ -89,11 +89,9 @@ Document filesystem guidelines for better performance with package concur.
 package concur
 
 import "path"
-import "errors"
 import "fmt"
 import "os"
 import "io"
-import "log"
 import "io/ioutil"
 
 // MaxKey represents the maximum value of a key.
@@ -139,15 +137,15 @@ const fullMarkLabel string = ".full"
 // of the directory pointed by an initialized collection.
 func (r Concur) concurLabelExists() error {
 	if !r.initialized {
-		return errors.New("unitialized concur.Concur")
+		return fmt.Errorf("unitialized concur.Concur")
 	}
 	concurMarkFile := path.Join(r.dir, concurMarkLabel)
 	_, err := os.Stat(concurMarkFile)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return errors.New(fmt.Sprintf("cannot check for database label file: %s", err))
+			return fmt.Errorf("cannot check for database label file: %s", err)
 		}
-		return errors.New("missing database label file")
+		return fmt.Errorf("missing database label file")
 	}
 	return nil
 }
@@ -165,7 +163,7 @@ func uint32ToBytes(x uint32) []byte {
 // bytesToUint32 is the counterpart of uint32ToBytes.
 func bytesToUint32(b []byte) (uint32, error) {
 	if len(b) != 4 {
-		return 0, errors.New(fmt.Sprintf("invalid length %v of byte sequence", len(b)))
+		return 0, fmt.Errorf("invalid length %v of byte sequence", len(b))
 	}
 	var answer uint32 = uint32(b[3])
 	for i := 1; i < 4; i++ {
@@ -187,15 +185,15 @@ func bytesToUint32(b []byte) (uint32, error) {
 // Pass zero for a sane default.
 func New(dir string, base uint32) (Concur, error) {
 	if !path.IsAbs(dir) {
-		return Concur{}, errors.New(fmt.Sprintf("dir '%s' is not absolute", dir))
+		return Concur{}, fmt.Errorf("dir '%s' is not absolute", dir)
 	}
 	dir = path.Clean(dir)
 	finfo, err := os.Stat(dir)
 	if err != nil {
-		return Concur{}, errors.New(fmt.Sprintf("dir '%s' is unreachable: %s", dir, err))
+		return Concur{}, fmt.Errorf("dir '%s' is unreachable: %s", dir, err)
 	}
 	if !finfo.IsDir() {
-		return Concur{}, errors.New(fmt.Sprintf("dir '%s' is not a directory", dir))
+		return Concur{}, fmt.Errorf("dir '%s' is not a directory", dir)
 	}
 	concurMarkFile := path.Join(dir, concurMarkLabel)
 	concurFileExists := true
@@ -204,28 +202,28 @@ func New(dir string, base uint32) (Concur, error) {
 		if os.IsNotExist(err) {
 			concurFileExists = false
 		} else {
-			return Concur{}, errors.New(fmt.Sprintf("cannot check for '%s' existence: %s", concurMarkFile, err))
+			return Concur{}, fmt.Errorf("cannot check for '%s' existence: %s", concurMarkFile, err)
 		}
 	}
 	if concurFileExists {
 		if finfo.IsDir() {
-			return Concur{}, errors.New(fmt.Sprintf("concur db mark file '%s' is a directory", concurMarkFile))
+			return Concur{}, fmt.Errorf("concur db mark file '%s' is a directory", concurMarkFile)
 		}
 		cFile, err := os.Open(concurMarkFile)
 		if err != nil {
-			return Concur{}, errors.New(fmt.Sprintf("cannot open concur mark file: %s", err))
+			return Concur{}, fmt.Errorf("cannot open concur mark file: %s", err)
 		}
 		b := make([]byte, 4)
 		n, err := cFile.Read(b)
 		if err != nil {
-			return Concur{}, errors.New(fmt.Sprintf("cannot read concur mark file: %s", err))
+			return Concur{}, fmt.Errorf("cannot read concur mark file: %s", err)
 		}
 		if n != 4 {
-			return Concur{}, errors.New(fmt.Sprintf("weird byte length %v from concur mark file", n))
+			return Concur{}, fmt.Errorf("weird byte length %v from concur mark file", n)
 		}
 		base, err = bytesToUint32(b)
 		if err != nil {
-			return Concur{}, errors.New(fmt.Sprintf("cannot parse base from concur mark file: %s", err))
+			return Concur{}, fmt.Errorf("cannot parse base from concur mark file: %s", err)
 		}
 		if base < MinBase || base > MaxBase {
 			panic(fmt.Sprintf("key base value from concur mark file is out of range: %v", base))
@@ -235,27 +233,26 @@ func New(dir string, base uint32) (Concur, error) {
 			base = Depth8Base
 		}
 		if base < MinBase || base > MaxBase {
-			return Concur{}, errors.New(fmt.Sprintf("base parameter is out of range"))
+			return Concur{}, fmt.Errorf("base parameter is out of range")
 		}
 		dFile, err := os.Open(dir)
 		if err != nil {
-			return Concur{}, errors.New(fmt.Sprintf("cannot open '%s': %s", dir, err))
+			return Concur{}, fmt.Errorf("cannot open '%s': %s", dir, err)
 		}
 		defer dFile.Close()
 		_, err = dFile.Readdir(1)
 		if err != io.EOF {
-			return Concur{}, errors.New(fmt.Sprintf("dir '%s' is not empty and is not a concur db", dir))
+			return Concur{}, fmt.Errorf("dir '%s' is not empty and is not a concur db", dir)
 		}
 		cFile, err := os.Create(concurMarkFile)
 		if err != nil {
-			return Concur{}, errors.New(fmt.Sprintf("cannot create concur db mark file '%s'", concurMarkFile))
+			return Concur{}, fmt.Errorf("cannot create concur db mark file '%s'", concurMarkFile)
 		}
 		defer cFile.Close()
 		_, err = cFile.Write(uint32ToBytes(base))
 		if err != nil {
-			return Concur{}, errors.New(fmt.Sprintf("cannot write base to concur mark file: %s", err))
+			return Concur{}, fmt.Errorf("cannot write base to concur mark file: %s", err)
 		}
-		log.Printf("concur database initialized in '%s'", dir)
 	}
 	var k uint32
 	var depth int
@@ -279,17 +276,17 @@ func (r Concur) SaveAs(key uint32, value []byte) error {
 	targetDir, targetChar, _ := formatPath(key, r.dir, r.keyBase, r.keyDepth)
 	err = os.MkdirAll(targetDir, 0777)
 	if err != nil {
-		return errors.New(fmt.Sprintf("cannot create directory '%s': %s", targetDir, err))
+		return fmt.Errorf("cannot create directory '%s': %s", targetDir, err)
 	}
 	targetPath := joinPathChar(targetDir, targetChar)
 	lockFile, err := lockDirForWrite(targetDir)
 	if err != nil {
-		return errors.New(fmt.Sprintf("cannot lock: %s", err))
+		return fmt.Errorf("cannot lock: %s", err)
 	}
 	defer lockFile.Close()
 	err = ioutil.WriteFile(targetPath, value, 0666)
 	if err != nil {
-		return errors.New(fmt.Sprintf("cannot write file '%s': %s", targetPath, err))
+		return fmt.Errorf("cannot write file '%s': %s", targetPath, err)
 	}
 	return nil
 }
@@ -304,12 +301,12 @@ func (r Concur) Load(key uint32) ([]byte, error) {
 	targetPath := joinPathChar(targetDir, targetChar)
 	lockFile, err := lockDirForRead(targetDir)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("cannot lock: %s", err))
+		return nil, fmt.Errorf("cannot lock: %s", err)
 	}
 	defer lockFile.Close()
 	buf, err := ioutil.ReadFile(targetPath)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("cannot read file '%s': %s", targetPath, err))
+		return nil, fmt.Errorf("cannot read file '%s': %s", targetPath, err)
 	}
 	return buf, nil
 }
@@ -324,12 +321,12 @@ func (r Concur) Erase(key uint32) error {
 	targetPath := joinPathChar(targetDir, targetChar)
 	lockFile, err := lockDirForWrite(targetDir)
 	if err != nil {
-		return errors.New(fmt.Sprintf("cannot lock: %s", err))
+		return fmt.Errorf("cannot lock: %s", err)
 	}
 	defer lockFile.Close()
 	err = os.Remove(targetPath)
 	if err != nil {
-		return errors.New(fmt.Sprintf("cannot remove file '%s': %s", targetPath, err))
+		return fmt.Errorf("cannot remove file '%s': %s", targetPath, err)
 	}
 	// Erase full marks up to top level.
 	for level := 1; level <= 6; level++ {
@@ -354,7 +351,7 @@ func (r Concur) Exists(key uint32) (bool, error) {
 	if os.IsNotExist(err) {
 		return false, nil
 	}
-	return false, errors.New(fmt.Sprintf("cannot check for '%s' existence: %s", targetPath, err))
+	return false, fmt.Errorf("cannot check for '%s' existence: %s", targetPath, err)
 }
 
 // Wipe removes a collection from the filesystem.
@@ -366,7 +363,7 @@ func (r Concur) Exists(key uint32) (bool, error) {
 func Wipe(dir string) error {
 	file, err := os.Open(dir)
 	if err != nil {
-		return errors.New(fmt.Sprintf("cannot open '%s': %s", dir, err))
+		return fmt.Errorf("cannot open '%s': %s", dir, err)
 	}
 	_, err = file.Readdir(1)
 	if err == io.EOF {
@@ -378,29 +375,29 @@ func Wipe(dir string) error {
 	concurWipingFile := path.Join(dir, concurWipingLabel)
 	_, err = os.Stat(concurMarkFile)
 	if err != nil && !os.IsNotExist(err) {
-		return errors.New(fmt.Sprintf("cannot check for concur mark file: %s", err))
+		return fmt.Errorf("cannot check for concur mark file: %s", err)
 	}
 	if err == nil {
 		err = os.Rename(concurMarkFile, concurWipingFile)
 		if err != nil {
-			return errors.New(fmt.Sprintf("cannot mark collection for wiping: %s", err))
+			return fmt.Errorf("cannot mark collection for wiping: %s", err)
 		}
 	}
 	_, err = os.Stat(concurWipingFile)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return errors.New(fmt.Sprintf("cannot check for wiping mark file: %s", err))
+			return fmt.Errorf("cannot check for wiping mark file: %s", err)
 		}
-		return errors.New("missing wiping mark file; aborting")
+		return fmt.Errorf("missing wiping mark file; aborting")
 	}
 	file, err = os.Open(dir)
 	if err != nil {
-		return errors.New(fmt.Sprintf("cannot open '%s': %s", dir, err))
+		return fmt.Errorf("cannot open '%s': %s", dir, err)
 	}
 	defer file.Close()
 	names, err := file.Readdirnames(0)
 	if err != nil {
-		return errors.New(fmt.Sprintf("cannot read directory '%s': %s", dir, err))
+		return fmt.Errorf("cannot read directory '%s': %s", dir, err)
 	}
 	for _, name := range names {
 		if name == concurWipingLabel {
@@ -409,69 +406,74 @@ func Wipe(dir string) error {
 		removePath := path.Join(dir, name)
 		err := os.RemoveAll(removePath)
 		if err != nil {
-			return errors.New(fmt.Sprintf("cannot remove '%s': %s", removePath, err))
+			return fmt.Errorf("cannot remove '%s': %s", removePath, err)
 		}
 	}
 	err = os.Remove(concurWipingFile)
 	if err != nil {
-		return errors.New(fmt.Sprintf("cannot remove wiping mark file: %s", err))
+		return fmt.Errorf("cannot remove wiping mark file: %s", err)
 	}
 	return nil
 }
 
-// SmallestKeyNotLessThan takes a key and returns it if it exists.
-// If key does not exist, the closest key in ascending order is returned
-// instead.
+// FindKey takes a key and returns it if it exists.
+// If key does not exist, the closest key in ascending (or descending) order
+// is returned instead.
 //
-// The bool return value tells if a key was found to be answered.
-func (r Concur) SmallestKeyNotLessThan(key uint32) (uint32, bool, error) {
-	// Check for unitialized receiver.
+// A KeyNotFoundError is returned if there are no keys to be answered.
+func (r Concur) FindKey(key uint32, ascending bool) (uint32, error) {
 	err := r.concurLabelExists()
 	if err != nil {
-		return 0, false, err
+		return 0, err
 	}
-	// minimum represents the smallest admissible value to be answered.
-	minimum := decomposeKey(key, r.keyBase, r.keyDepth)
-	// Look for a key in descending order of level depth.
+	// threshold represents the smallest (largest) admissible value to be
+	// answered.
+	threshold := decomposeKey(key, r.keyBase, r.keyDepth)
+	// Look for a key in deepest level first and then above.
 	for level := 0; level < r.keyDepth; level++ {
 		if level > 0 {
 			// Key was not found in deepest level.
-			// Update minimum to represent the first admissible value
+			// Update threshold to represent the first admissible value
 			// to be searched in this level.
 			for i := 0; i < level; i++ {
-				minimum[i] = r.keyBase - 1
+				if ascending {
+					threshold[i] = r.keyBase - 1
+				} else {
+					threshold[i] = 0
+				}
 			}
-			k, err := composeKey(minimum, r.keyBase, r.keyDepth)
+			k, err := composeKey(threshold, r.keyBase, r.keyDepth)
 			if err != nil {
-				_ = "breakpoint"
-				return 0, false, nil
+				return 0, KeyNotFoundError{}
 			}
-			if k < MaxKey {
+			if ascending && k < MaxKey {
 				k++
+			} else if !ascending && k > 0 {
+				k--
 			} else {
 				// Key range limit reached.
-				return 0, false, nil
+				return 0, KeyNotFoundError{}
 			}
-			minimum = decomposeKey(k, r.keyBase, r.keyDepth)
+			threshold = decomposeKey(k, r.keyBase, r.keyDepth)
 		}
-		// Look for the smallest key not less than the minimum in this depth level.
-		br, err := smallestKeyNotLessThanInLevel(minimum, level, r.dir, r.keyBase, r.keyDepth)
+		// Look for the smallest (largest) key not less (greater) than the
+		// threshold in this depth level.
+		br, err := findKeyInLevel(threshold, level, r.dir, r.keyBase, r.keyDepth, ascending)
 		if err != nil {
-			return 0, false, errors.New(fmt.Sprintf("cannot lookup key %v: %s", key, err))
+			return 0, fmt.Errorf("cannot lookup key %v: %s", key, err)
 		}
 		if br != nil {
 			// Yay!! Found it :-)
 			answer, err := composeKey(br, r.keyBase, r.keyDepth)
 			if err != nil {
-				_ = "breakpoint"
 				// Assume compose failure is due to garbage leading to impossible broken keys.
-				return 0, false, nil
+				return 0, KeyNotFoundError{}
 			}
-			return answer, true, nil
+			return answer, nil
 		}
 	}
 	// Search exausted in all depth levels.
-	return 0, false, nil
+	return 0, KeyNotFoundError{}
 }
 
 // Save creates a key with a new value.
@@ -491,7 +493,7 @@ func (r Concur) Save(value []byte) (uint32, error) {
 		// Find a free key.
 		br, err := findFreeKeyFromLevel(newBrokenKey(r.keyDepth), r.keyDepth-1, r.dir, r.keyBase, r.keyDepth)
 		if err != nil {
-			return 0, errors.New(fmt.Sprintf("cannot find free key: %s", err))
+			return 0, fmt.Errorf("cannot find free key: %s", err)
 		}
 		if br == nil {
 			// findFreeKeyFromLevel() is supposed to always find a key,
@@ -500,28 +502,27 @@ func (r Concur) Save(value []byte) (uint32, error) {
 		}
 		key, err = composeKey(br, r.keyBase, r.keyDepth)
 		if err != nil {
-			_ = "breakpoint"
 			// As free keys are searched in ascending order, assume impossible
 			// ones indicate exaustion of key space.
-			return 0, errors.New(fmt.Sprintf("no more keys available."))
+			return 0, fmt.Errorf("no more keys available.")
 		}
 		targetDir = keyComponentPath(br, 1, r.dir, r.keyDepth)
 		err = os.MkdirAll(targetDir, 0777)
 		if err != nil {
-			return 0, errors.New(fmt.Sprintf("cannot create directory '%s': %s", targetDir, err))
+			return 0, fmt.Errorf("cannot create directory '%s': %s", targetDir, err)
 		}
 		targetChar := formatChar(br[0])
 		targetPath = joinPathChar(targetDir, targetChar)
 		lockFile, err := lockDirForWrite(targetDir)
 		if err != nil {
-			return 0, errors.New(fmt.Sprintf("cannot lock: %s", err))
+			return 0, fmt.Errorf("cannot lock: %s", err)
 		}
 		// Make sure another concurrent Save() didn't get the same key.
 		_, err = os.Stat(targetPath)
 		if err != nil {
 			if !os.IsNotExist(err) {
 				lockFile.Close()
-				return 0, errors.New(fmt.Sprintf("cannot check for '%s' existence: %s", targetPath, err))
+				return 0, fmt.Errorf("cannot check for '%s' existence: %s", targetPath, err)
 			}
 			// Yay, our key is ours :-)
 			defer lockFile.Close()
@@ -533,7 +534,7 @@ func (r Concur) Save(value []byte) (uint32, error) {
 	// A free key was found.
 	err = ioutil.WriteFile(targetPath, value, 0666)
 	if err != nil {
-		return 0, errors.New(fmt.Sprintf("cannot write file '%s': %s", targetPath, err))
+		return 0, fmt.Errorf("cannot write file '%s': %s", targetPath, err)
 	}
 	return key, nil
 }
