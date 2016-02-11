@@ -178,19 +178,19 @@ func TestLoadMany(t *testing.T) {
 	}
 }
 
-func TestKeyList(t *testing.T) {
+func TestKeyListAscending(t *testing.T) {
 	receivedKeys := make([]uint32, 0)
-	key, err := db.SmallestKeyNotLessThan(0)
+	key, err := db.FindKey(0, true)
 	for err == nil {
 		//t.Logf("found key: %v", key)
 		receivedKeys = append(receivedKeys, key)
 		if key >= concur.MaxKey {
 			break
 		}
-		key, err = db.SmallestKeyNotLessThan(key + 1)
+		key, err = db.FindKey(key+1, true)
 	}
-	if !concur.IsKeyNotFoundError(err) {
-		t.Fatalf("concur.SmallestKeyNotLessThan failed: %s", err)
+	if err != nil && !concur.IsKeyNotFoundError(err) {
+		t.Fatalf("concur.FindKey failed: %s", err)
 	}
 	savedKeys := make([]uint32, 0)
 	for _, data := range savedData {
@@ -202,6 +202,38 @@ func TestKeyList(t *testing.T) {
 		t.Fatalf("received key length mismatch: received %v expected %v", rl, sl)
 	}
 	uint32slice.SortUint32s(savedKeys)
+	for i, rk := range receivedKeys {
+		sk := savedKeys[i]
+		if sk != rk {
+			t.Fatalf("received key mismatch: received %v expected %v", rk, sk)
+		}
+	}
+}
+
+func TestKeyListDescending(t *testing.T) {
+	receivedKeys := make([]uint32, 0)
+	key, err := db.FindKey(concur.MaxKey, false)
+	for err == nil {
+		//t.Logf("found key: %v", key)
+		receivedKeys = append(receivedKeys, key)
+		if key <= 0 {
+			break
+		}
+		key, err = db.FindKey(key-1, false)
+	}
+	if err != nil && !concur.IsKeyNotFoundError(err) {
+		t.Fatalf("concur.FindKey failed: %s", err)
+	}
+	savedKeys := make([]uint32, 0)
+	for _, data := range savedData {
+		savedKeys = append(savedKeys, data.key)
+	}
+	rl := len(receivedKeys)
+	sl := len(savedKeys)
+	if rl != sl {
+		t.Fatalf("received key length mismatch: received %v expected %v", rl, sl)
+	}
+	uint32slice.ReversedSortUint32s(savedKeys)
 	for i, rk := range receivedKeys {
 		sk := savedKeys[i]
 		if sk != rk {
@@ -252,7 +284,7 @@ func Example() {
 	concur.Wipe(dbPath)
 	db, _ := concur.New(dbPath, 0)
 
-	// Save in new keys
+	// Save values in new keys
 	k1, _ := db.Save([]byte("goodbye"))
 	k2, _ := db.Save([]byte("cruel"))
 	k3, _ := db.Save([]byte("world"))
@@ -262,17 +294,21 @@ func Example() {
 	db.Erase(k2)
 	db.SaveAs(k3, []byte("folks"))
 
-	// Retrieve all keys
-	key, err := db.SmallestKeyNotLessThan(0)
+	// Loop through keys
+	key, err := db.FindKey(0, true)
 	for err == nil {
+		// Print value
 		val, _ := db.Load(key)
 		fmt.Printf("key %v: %s\n", key, string(val))
 		if key >= concur.MaxKey {
+			// Maximum key reached
 			break
 		}
-		key, err = db.SmallestKeyNotLessThan(key + 1)
+		// Find next existent key
+		key, err = db.FindKey(key+1, true)
 	}
-	if !concur.IsKeyNotFoundError(err) {
+	if err != nil && !concur.IsKeyNotFoundError(err) {
+		// An abnormal error occurred
 		panic(err)
 	}
 

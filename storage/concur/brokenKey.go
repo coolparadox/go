@@ -106,22 +106,23 @@ func joinPathChar(s string, c rune) string {
 	return fmt.Sprintf("%s%c%c", s, os.PathSeparator, c)
 }
 
-// smallestKeyNotLessThan takes broken key components, depth level and a base
+// findKeyInLevel takes broken key components, depth level and a base
 // directory to compose the path to a subdirectory in the filesystem. Then it
-// returns the smallest key that exists under this subdirectory.
-func smallestKeyNotLessThanInLevel(br brokenKey, level int, baseDir string, keyBase uint32, keyDepth int) (brokenKey, error) {
+// returns the smallest (largest) key that exists under this subdirectory
+// that is greater (less) than or equal to the given broken key.
+func findKeyInLevel(br brokenKey, level int, baseDir string, keyBase uint32, keyDepth int, ascending bool) (brokenKey, error) {
 	// Find out where keys will be searched from.
 	// This can be in any valid depth level.
 	kcDir := keyComponentPath(br, level+1, baseDir, keyDepth)
 	// Iterate through key components of this depth level.
-	// Assume components are sorted in ascending order.
-	kcs, err := listKeyComponentsInDir(kcDir, keyBase)
+	// Assume components are sorted in ascending (descending) order.
+	kcs, err := listKeyComponentsInDir(kcDir, keyBase, ascending)
 	if err != nil {
 		return nil, fmt.Errorf("cannot list key components in '%s': %s", kcDir, err)
 	}
 	for _, kc := range kcs {
-		// Discard component if it's smaller than the reference.
-		if kc < br[level] {
+		// Discard component if it's smaller (larger) than the reference.
+		if (ascending && kc < br[level]) || (!ascending && kc > br[level]) {
 			continue
 		}
 		if level <= 0 {
@@ -132,13 +133,19 @@ func smallestKeyNotLessThanInLevel(br brokenKey, level int, baseDir string, keyB
 			return answer, nil
 		} else {
 			// Found a matching component in not the deepest level.
-			// Answer the smallest key under the next depth level from this component.
+			// Answer the smallest (largest) key under the next depth level
+			// from this component.
 			brn := newBrokenKey(keyDepth)
+			if !ascending {
+				for i := 0; i < level; i++ {
+					brn[i] = keyBase - 1
+				}
+			}
 			brn[level] = kc
 			for i := level + 1; i < keyDepth; i++ {
 				brn[i] = br[i]
 			}
-			return smallestKeyNotLessThanInLevel(brn, level-1, baseDir, keyBase, keyDepth)
+			return findKeyInLevel(brn, level-1, baseDir, keyBase, keyDepth, ascending)
 		}
 	}
 	// Search exausted and no keys found.

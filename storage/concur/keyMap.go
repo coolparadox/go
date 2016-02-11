@@ -109,8 +109,8 @@ func parseChar(r rune) (uint32, error) {
 }
 
 // listKeyComponentsInDir returns all key components found in a subdirectory,
-// sorted in ascending order.
-func listKeyComponentsInDir(dir string, keyBase uint32) ([]uint32, error) {
+// sorted in ascending or descending order.
+func listKeyComponentsInDir(dir string, keyBase uint32, ascending bool) ([]uint32, error) {
 	answer := make([]uint32, 0, keyBase)
 	// Iterate through all names in directory.
 	var err error
@@ -145,6 +145,10 @@ func listKeyComponentsInDir(dir string, keyBase uint32) ([]uint32, error) {
 		answer = append(answer, component)
 	}
 	// Sort answer slice before returning it.
-	uint32slice.SortUint32s(answer)
+	if ascending {
+		uint32slice.SortUint32s(answer)
+	} else {
+		uint32slice.ReversedSortUint32s(answer)
+	}
 	return answer, nil
 }

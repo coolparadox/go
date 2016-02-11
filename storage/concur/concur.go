@@ -92,7 +92,6 @@ import "path"
 import "fmt"
 import "os"
 import "io"
-import "log"
 import "io/ioutil"
 
 // MaxKey represents the maximum value of a key.
@@ -254,7 +253,6 @@ func New(dir string, base uint32) (Concur, error) {
 		if err != nil {
 			return Concur{}, fmt.Errorf("cannot write base to concur mark file: %s", err)
 		}
-		log.Printf("concur database initialized in '%s'", dir)
 	}
 	var k uint32
 	var depth int
@@ -418,41 +416,49 @@ func Wipe(dir string) error {
 	return nil
 }
 
-// SmallestKeyNotLessThan takes a key and returns it if it exists.
-// If key does not exist, the closest key in ascending order is returned
-// instead.
+// FindKey takes a key and returns it if it exists.
+// If key does not exist, the closest key in ascending (or descending) order
+// is returned instead.
 //
 // A KeyNotFoundError is returned if there are no keys to be answered.
-func (r Concur) SmallestKeyNotLessThan(key uint32) (uint32, error) {
+func (r Concur) FindKey(key uint32, ascending bool) (uint32, error) {
 	err := r.concurLabelExists()
 	if err != nil {
 		return 0, err
 	}
-	// minimum represents the smallest admissible value to be answered.
-	minimum := decomposeKey(key, r.keyBase, r.keyDepth)
-	// Look for a key in descending order of level depth.
+	// threshold represents the smallest (largest) admissible value to be
+	// answered.
+	threshold := decomposeKey(key, r.keyBase, r.keyDepth)
+	// Look for a key in deepest level first and then above.
 	for level := 0; level < r.keyDepth; level++ {
 		if level > 0 {
 			// Key was not found in deepest level.
-			// Update minimum to represent the first admissible value
+			// Update threshold to represent the first admissible value
 			// to be searched in this level.
 			for i := 0; i < level; i++ {
-				minimum[i] = r.keyBase - 1
+				if ascending {
+					threshold[i] = r.keyBase - 1
+				} else {
+					threshold[i] = 0
+				}
 			}
-			k, err := composeKey(minimum, r.keyBase, r.keyDepth)
+			k, err := composeKey(threshold, r.keyBase, r.keyDepth)
 			if err != nil {
 				return 0, KeyNotFoundError{}
 			}
-			if k < MaxKey {
+			if ascending && k < MaxKey {
 				k++
+			} else if !ascending && k > 0 {
+				k--
 			} else {
 				// Key range limit reached.
 				return 0, KeyNotFoundError{}
 			}
-			minimum = decomposeKey(k, r.keyBase, r.keyDepth)
+			threshold = decomposeKey(k, r.keyBase, r.keyDepth)
 		}
-		// Look for the smallest key not less than the minimum in this depth level.
-		br, err := smallestKeyNotLessThanInLevel(minimum, level, r.dir, r.keyBase, r.keyDepth)
+		// Look for the smallest (largest) key not less (greater) than the
+		// threshold in this depth level.
+		br, err := findKeyInLevel(threshold, level, r.dir, r.keyBase, r.keyDepth, ascending)
 		if err != nil {
 			return 0, fmt.Errorf("cannot lookup key %v: %s", key, err)
 		}
