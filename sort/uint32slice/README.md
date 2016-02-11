@@ -7,6 +7,13 @@ uint32s.
 
 ## Usage
 
+#### func  ReversedSortUint32s
+
+```go
+func ReversedSortUint32s(s []uint32)
+```
+ReversedSortUint32s sorts a slice of uint32 in decreasing order.
+
 #### func  SearchUint32s
 
 ```go
