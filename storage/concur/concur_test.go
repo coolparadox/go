@@ -26,6 +26,7 @@ import "math/rand"
 import "time"
 import "io"
 import "flag"
+import "fmt"
 
 var myPath string
 var howManySaves uint
@@ -178,24 +179,18 @@ func TestLoadMany(t *testing.T) {
 }
 
 func TestKeyList(t *testing.T) {
-	key, ok, err := db.SmallestKeyNotLessThan(0)
-	if err != nil {
-		t.Fatalf("concur.SmallestKeyNotLessThan failed: %s", err)
-	}
-	if !ok {
-		t.Fatalf("empty database!?")
-	}
 	receivedKeys := make([]uint32, 0)
-	for ok {
+	key, err := db.SmallestKeyNotLessThan(0)
+	for err == nil {
 		//t.Logf("found key: %v", key)
 		receivedKeys = append(receivedKeys, key)
 		if key >= concur.MaxKey {
 			break
 		}
-		key, ok, err = db.SmallestKeyNotLessThan(key + 1)
-		if err != nil {
-			t.Fatalf("concur.SmallestKeyNotLessThan failed: %s", err)
-		}
+		key, err = db.SmallestKeyNotLessThan(key + 1)
+	}
+	if !concur.IsKeyNotFoundError(err) {
+		t.Fatalf("concur.SmallestKeyNotLessThan failed: %s", err)
 	}
 	savedKeys := make([]uint32, 0)
 	for _, data := range savedData {
@@ -244,4 +239,45 @@ func TestExists(t *testing.T) {
 			}
 		}
 	}
+}
+
+func Example() {
+
+	// Warning: error handling is purposely ignored in some places
+	// for didactic purposes.
+
+	// Create an empty database
+	dbPath := "/tmp/my_db"
+	os.MkdirAll(dbPath, 0755)
+	concur.Wipe(dbPath)
+	db, _ := concur.New(dbPath, 0)
+
+	// Save in new keys
+	k1, _ := db.Save([]byte("goodbye"))
+	k2, _ := db.Save([]byte("cruel"))
+	k3, _ := db.Save([]byte("world"))
+
+	// Update, remove
+	db.SaveAs(k1, []byte("hello"))
+	db.Erase(k2)
+	db.SaveAs(k3, []byte("folks"))
+
+	// Retrieve all keys
+	key, err := db.SmallestKeyNotLessThan(0)
+	for err == nil {
+		val, _ := db.Load(key)
+		fmt.Printf("key %v: %s\n", key, string(val))
+		if key >= concur.MaxKey {
+			break
+		}
+		key, err = db.SmallestKeyNotLessThan(key + 1)
+	}
+	if !concur.IsKeyNotFoundError(err) {
+		panic(err)
+	}
+
+	// Output:
+	// key 0: hello
+	// key 2: folks
+
 }

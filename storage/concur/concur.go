@@ -72,8 +72,8 @@ The base can range from MinBase (2, resulting in a level depth of 32 for
 holding a 32 bit key) to MaxBase (0x10000, giving a level depth of only 2).
 
 Whether the numeric base chosen, directories and files are named by single
-unicode characters, where the first 10 in the mapping range are decimal digits
-from 0 to 9, and the next 26 are upper case letters from A to Z.
+unicode characters, where the first 10 ones in the mapping range are decimal
+digits from 0 to 9, and the next 26 ones are upper case letters from A to Z.
 Thus component bases up to 36 are guaranteed to be mapped by characters in the
 ascii range.
 
@@ -422,12 +422,11 @@ func Wipe(dir string) error {
 // If key does not exist, the closest key in ascending order is returned
 // instead.
 //
-// The bool return value tells if a key was found to be answered.
-func (r Concur) SmallestKeyNotLessThan(key uint32) (uint32, bool, error) {
-	// Check for unitialized receiver.
+// A KeyNotFoundError is returned if there are no keys to be answered.
+func (r Concur) SmallestKeyNotLessThan(key uint32) (uint32, error) {
 	err := r.concurLabelExists()
 	if err != nil {
-		return 0, false, err
+		return 0, err
 	}
 	// minimum represents the smallest admissible value to be answered.
 	minimum := decomposeKey(key, r.keyBase, r.keyDepth)
@@ -442,35 +441,33 @@ func (r Concur) SmallestKeyNotLessThan(key uint32) (uint32, bool, error) {
 			}
 			k, err := composeKey(minimum, r.keyBase, r.keyDepth)
 			if err != nil {
-				_ = "breakpoint"
-				return 0, false, nil
+				return 0, KeyNotFoundError{}
 			}
 			if k < MaxKey {
 				k++
 			} else {
 				// Key range limit reached.
-				return 0, false, nil
+				return 0, KeyNotFoundError{}
 			}
 			minimum = decomposeKey(k, r.keyBase, r.keyDepth)
 		}
 		// Look for the smallest key not less than the minimum in this depth level.
 		br, err := smallestKeyNotLessThanInLevel(minimum, level, r.dir, r.keyBase, r.keyDepth)
 		if err != nil {
-			return 0, false, fmt.Errorf("cannot lookup key %v: %s", key, err)
+			return 0, fmt.Errorf("cannot lookup key %v: %s", key, err)
 		}
 		if br != nil {
 			// Yay!! Found it :-)
 			answer, err := composeKey(br, r.keyBase, r.keyDepth)
 			if err != nil {
-				_ = "breakpoint"
 				// Assume compose failure is due to garbage leading to impossible broken keys.
-				return 0, false, nil
+				return 0, KeyNotFoundError{}
 			}
-			return answer, true, nil
+			return answer, nil
 		}
 	}
 	// Search exausted in all depth levels.
-	return 0, false, nil
+	return 0, KeyNotFoundError{}
 }
 
 // Save creates a key with a new value.
@@ -499,7 +496,6 @@ func (r Concur) Save(value []byte) (uint32, error) {
 		}
 		key, err = composeKey(br, r.keyBase, r.keyDepth)
 		if err != nil {
-			_ = "breakpoint"
 			// As free keys are searched in ascending order, assume impossible
 			// ones indicate exaustion of key space.
 			return 0, fmt.Errorf("no more keys available.")
