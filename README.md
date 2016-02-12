@@ -1,6 +1,6 @@
 # go
 
-This repository contains libraries I wrote for the [Go](http://www.golang.org) language.
+This repository contains libraries I wrote for the [Go](http://www.golang.org) language. [![GoDoc](https://godoc.org/github.com/coolparadox/go?status.svg)](https://godoc.org/github.com/coolparadox/go)
 
 Copyright 2016 Rafael Lorandi <coolparadox@gmail.com>
 
