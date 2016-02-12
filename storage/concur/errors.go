@@ -17,8 +17,7 @@
 
 package concur
 
-// KeyNotFoundError is returned by SmallestKeyNotLessThan and
-// LargestKeyNotGreaterThan when there are no keys available.
+// KeyNotFoundError is returned by FindKey when there are no keys available.
 type KeyNotFoundError struct{}
 
 func (KeyNotFoundError) Error() string {
