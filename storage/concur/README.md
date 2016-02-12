@@ -1,5 +1,4 @@
 # concur
---
 
 Package concur is a storage of byte sequences for Go with automatic key generation.
 

@@ -1,5 +1,4 @@
 # runeslice
---
 
 Package runeslice is an implementation of sort.Interface for slices of runes.
 

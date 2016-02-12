@@ -1,5 +1,4 @@
 # uint32slice
---
 
 Package uint32slice is an implementation of sort.Interface for slices of uint32s.
 
