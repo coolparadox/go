@@ -61,7 +61,7 @@ func addUint32(a, b uint32) (uint32, error) {
 // composeKey converts key components to a key.
 func composeKey(br brokenKey, keyBase uint32, keyDepth int) (uint32, error) {
 	var err error
-	var answer uint32 = br[keyDepth-1]
+	answer := br[keyDepth-1]
 	var i int
 	for i = keyDepth - 2; i >= 0; i-- {
 		answer, err = multiplyUint32(answer, keyBase)
@@ -131,22 +131,21 @@ func findKeyInLevel(br brokenKey, level int, baseDir string, keyBase uint32, key
 			copy(answer, br)
 			answer[0] = kc
 			return answer, nil
-		} else {
-			// Found a matching component in not the deepest level.
-			// Answer the smallest (largest) key under the next depth level
-			// from this component.
-			brn := newBrokenKey(keyDepth)
-			if !ascending {
-				for i := 0; i < level; i++ {
-					brn[i] = keyBase - 1
-				}
-			}
-			brn[level] = kc
-			for i := level + 1; i < keyDepth; i++ {
-				brn[i] = br[i]
-			}
-			return findKeyInLevel(brn, level-1, baseDir, keyBase, keyDepth, ascending)
 		}
+		// Found a matching component in not the deepest level.
+		// Answer the smallest (largest) key under the next depth level
+		// from this component.
+		brn := newBrokenKey(keyDepth)
+		if !ascending {
+			for i := 0; i < level; i++ {
+				brn[i] = keyBase - 1
+			}
+		}
+		brn[level] = kc
+		for i := level + 1; i < keyDepth; i++ {
+			brn[i] = br[i]
+		}
+		return findKeyInLevel(brn, level-1, baseDir, keyBase, keyDepth, ascending)
 	}
 	// Search exausted and no keys found.
 	return nil, nil
@@ -184,10 +183,9 @@ func findFreeKeyFromLevel(from brokenKey, level int, baseDir string, keyBase uin
 					continue
 				}
 				return answer, nil
-			} else {
-				// Key component already exists in deepest level.
-				continue
 			}
+			// Key component already exists in deepest level.
+			continue
 		}
 		if !os.IsNotExist(err) {
 			return nil, err

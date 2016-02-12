@@ -165,7 +165,7 @@ func bytesToUint32(b []byte) (uint32, error) {
 	if len(b) != 4 {
 		return 0, fmt.Errorf("invalid length %v of byte sequence", len(b))
 	}
-	var answer uint32 = uint32(b[3])
+	answer := uint32(b[3])
 	for i := 1; i < 4; i++ {
 		answer *= 0x100
 		answer += uint32(b[3-i])
@@ -504,7 +504,7 @@ func (r Concur) Save(value []byte) (uint32, error) {
 		if err != nil {
 			// As free keys are searched in ascending order, assume impossible
 			// ones indicate exaustion of key space.
-			return 0, fmt.Errorf("no more keys available.")
+			return 0, fmt.Errorf("no more keys available")
 		}
 		targetDir = keyComponentPath(br, 1, r.dir, r.keyDepth)
 		err = os.MkdirAll(targetDir, 0777)
