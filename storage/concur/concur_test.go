@@ -80,7 +80,7 @@ func TestNewEmpty(t *testing.T) {
 
 func TestSaveAs(t *testing.T) {
 	sample := make([]byte, 100)
-	for i, _ := range sample {
+	for i := range sample {
 		sample[i] = byte(rand.Intn(256))
 	}
 	var err error
@@ -111,12 +111,12 @@ func TestSaveAs(t *testing.T) {
 
 	err = db.Erase(0)
 	if err != nil {
-		t.Fatalf("concur.Erase(0) failed: $s", err)
+		t.Fatalf("concur.Erase(0) failed: %s", err)
 	}
 
 	err = db.Erase(concur.MaxKey)
 	if err != nil {
-		t.Fatalf("concur.Erase(concur.MaxKey) failed: $s", err)
+		t.Fatalf("concur.Erase(concur.MaxKey) failed: %s", err)
 	}
 
 }
@@ -179,7 +179,7 @@ func TestLoadMany(t *testing.T) {
 }
 
 func TestKeyListAscending(t *testing.T) {
-	receivedKeys := make([]uint32, 0)
+	var receivedKeys []uint32
 	key, err := db.FindKey(0, true)
 	for err == nil {
 		//t.Logf("found key: %v", key)
@@ -192,7 +192,7 @@ func TestKeyListAscending(t *testing.T) {
 	if err != nil && !concur.IsKeyNotFoundError(err) {
 		t.Fatalf("concur.FindKey failed: %s", err)
 	}
-	savedKeys := make([]uint32, 0)
+	var savedKeys []uint32
 	for _, data := range savedData {
 		savedKeys = append(savedKeys, data.key)
 	}
@@ -211,7 +211,7 @@ func TestKeyListAscending(t *testing.T) {
 }
 
 func TestKeyListDescending(t *testing.T) {
-	receivedKeys := make([]uint32, 0)
+	var receivedKeys []uint32
 	key, err := db.FindKey(concur.MaxKey, false)
 	for err == nil {
 		//t.Logf("found key: %v", key)
@@ -224,7 +224,7 @@ func TestKeyListDescending(t *testing.T) {
 	if err != nil && !concur.IsKeyNotFoundError(err) {
 		t.Fatalf("concur.FindKey failed: %s", err)
 	}
-	savedKeys := make([]uint32, 0)
+	var savedKeys []uint32
 	for _, data := range savedData {
 		savedKeys = append(savedKeys, data.key)
 	}

@@ -54,8 +54,8 @@ func init() {
 		},
 	)
 	var comp uint32 = 36
-	var char rune = 'Z' + 1
-	var prevChar rune = unicode.MaxRune
+	char := 'Z' + 1
+	prevChar := unicode.MaxRune
 	var fr formatRange
 	for ; char < unicode.MaxRune; char++ {
 		if !unicode.IsPrint(char) {
