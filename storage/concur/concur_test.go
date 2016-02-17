@@ -189,7 +189,7 @@ func TestKeyListAscending(t *testing.T) {
 		}
 		key, err = db.FindKey(key+1, true)
 	}
-	if err != nil && !concur.IsKeyNotFoundError(err) {
+	if err != nil && err != concur.KeyNotFoundError {
 		t.Fatalf("concur.FindKey failed: %s", err)
 	}
 	var savedKeys []uint32
@@ -221,7 +221,7 @@ func TestKeyListDescending(t *testing.T) {
 		}
 		key, err = db.FindKey(key-1, false)
 	}
-	if err != nil && !concur.IsKeyNotFoundError(err) {
+	if err != nil && err != concur.KeyNotFoundError {
 		t.Fatalf("concur.FindKey failed: %s", err)
 	}
 	var savedKeys []uint32
@@ -307,7 +307,7 @@ func Example() {
 		// Find next existent key
 		key, err = db.FindKey(key+1, true)
 	}
-	if err != nil && !concur.IsKeyNotFoundError(err) {
+	if err != nil && err != concur.KeyNotFoundError {
 		// An abnormal error occurred
 		panic(err)
 	}

@@ -429,7 +429,7 @@ func Wipe(dir string) error {
 // If key does not exist, the closest key in ascending (or descending) order
 // is returned instead.
 //
-// A KeyNotFoundError is returned if there are no keys to be answered.
+// KeyNotFoundError is returned if there are no keys to be answered.
 func (r Concur) FindKey(key uint32, ascending bool) (uint32, error) {
 	err := r.concurLabelExists()
 	if err != nil {
@@ -453,7 +453,7 @@ func (r Concur) FindKey(key uint32, ascending bool) (uint32, error) {
 			}
 			k, err := composeKey(threshold, r.keyBase, r.keyDepth)
 			if err != nil {
-				return 0, KeyNotFoundError{}
+				return 0, KeyNotFoundError
 			}
 			if ascending && k < MaxKey {
 				k++
@@ -461,7 +461,7 @@ func (r Concur) FindKey(key uint32, ascending bool) (uint32, error) {
 				k--
 			} else {
 				// Key range limit reached.
-				return 0, KeyNotFoundError{}
+				return 0, KeyNotFoundError
 			}
 			threshold = decomposeKey(k, r.keyBase, r.keyDepth)
 		}
@@ -476,13 +476,13 @@ func (r Concur) FindKey(key uint32, ascending bool) (uint32, error) {
 			answer, err := composeKey(br, r.keyBase, r.keyDepth)
 			if err != nil {
 				// Assume compose failure is due to garbage leading to impossible broken keys.
-				return 0, KeyNotFoundError{}
+				return 0, KeyNotFoundError
 			}
 			return answer, nil
 		}
 	}
 	// Search exausted in all depth levels.
-	return 0, KeyNotFoundError{}
+	return 0, KeyNotFoundError
 }
 
 // Save creates a key with a new value.

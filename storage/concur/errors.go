@@ -17,15 +17,7 @@
 
 package concur
 
+import "errors"
+
 // KeyNotFoundError is returned by FindKey when there are no keys available.
-type KeyNotFoundError struct{}
-
-func (KeyNotFoundError) Error() string {
-	return "key not found"
-}
-
-// IsKeyNotFoundError tells if an error is of type KeyNotFoundError.
-func IsKeyNotFoundError(e error) bool {
-	_, answer := e.(KeyNotFoundError)
-	return answer
-}
+var KeyNotFoundError = errors.New("key not found")
