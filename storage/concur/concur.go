@@ -274,12 +274,8 @@ func (r Concur) SaveAs(key uint32, value []byte) error {
 		return err
 	}
 	targetDir, targetChar, _ := formatPath(key, r.dir, r.keyBase, r.keyDepth)
-	err = os.MkdirAll(targetDir, 0777)
-	if err != nil {
-		return fmt.Errorf("cannot create directory '%s': %s", targetDir, err)
-	}
 	targetPath := joinPathChar(targetDir, targetChar)
-	lockFile, err := lockDirForWrite(targetDir)
+	lockFile, err := lockDirForWrite(targetDir, true)
 	if err != nil {
 		return fmt.Errorf("cannot lock: %s", err)
 	}
@@ -319,7 +315,14 @@ func (r Concur) Erase(key uint32) error {
 	}
 	targetDir, targetChar, br := formatPath(key, r.dir, r.keyBase, r.keyDepth)
 	targetPath := joinPathChar(targetDir, targetChar)
-	lockFile, err := lockDirForWrite(targetDir)
+	_, err = os.Stat(targetPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("cannot stat: %s", err)
+	}
+	lockFile, err := lockDirForWrite(targetDir, false)
 	if err != nil {
 		return fmt.Errorf("cannot lock: %s", err)
 	}
@@ -328,10 +331,16 @@ func (r Concur) Erase(key uint32) error {
 	if err != nil {
 		return fmt.Errorf("cannot remove file '%s': %s", targetPath, err)
 	}
-	// Erase full marks up to top level.
-	for level := 1; level <= 6; level++ {
-		fullMarkPath := fmt.Sprintf("%s%c%s", keyComponentPath(br, level, r.dir, r.keyDepth), os.PathSeparator, fullMarkLabel)
-		_ = os.RemoveAll(fullMarkPath)
+	for level := 1; level < r.keyDepth; level++ {
+		targetDir := keyComponentPath(br, level, r.dir, r.keyDepth)
+		// Erase full marks up to top level.
+		fullMarkPath := fmt.Sprintf("%s%c%s", targetDir, os.PathSeparator, fullMarkLabel)
+		os.RemoveAll(fullMarkPath)
+		// Erase empty directories up to top level.
+		kcs, err := listKeyComponentsInDir(targetDir, r.keyBase, true)
+		if err == nil && len(kcs) <= 0 {
+			os.RemoveAll(targetDir)
+		}
 	}
 	return nil
 }
@@ -507,13 +516,9 @@ func (r Concur) Save(value []byte) (uint32, error) {
 			return 0, fmt.Errorf("no more keys available")
 		}
 		targetDir = keyComponentPath(br, 1, r.dir, r.keyDepth)
-		err = os.MkdirAll(targetDir, 0777)
-		if err != nil {
-			return 0, fmt.Errorf("cannot create directory '%s': %s", targetDir, err)
-		}
 		targetChar := formatChar(br[0])
 		targetPath = joinPathChar(targetDir, targetChar)
-		lockFile, err := lockDirForWrite(targetDir)
+		lockFile, err := lockDirForWrite(targetDir, true)
 		if err != nil {
 			return 0, fmt.Errorf("cannot lock: %s", err)
 		}

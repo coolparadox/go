@@ -22,7 +22,13 @@ import "os"
 import "path"
 import "golang.org/x/sys/unix"
 
-func openLockFile(dir string) (*os.File, error) {
+func openLockFile(dir string, create bool) (*os.File, error) {
+	if create {
+		err := os.MkdirAll(dir, 0777)
+		if err != nil {
+			return nil, fmt.Errorf("cannot create directory '%s': %s", dir, err)
+		}
+	}
 	p := path.Join(dir, ".lock")
 	f, err := os.OpenFile(p, os.O_CREATE, 0666)
 	if err != nil {
@@ -31,34 +37,37 @@ func openLockFile(dir string) (*os.File, error) {
 	return f, nil
 }
 
-// lockDirForWrite places an advisory exclusive lock on a directory.
+// lockDir places an advisory lock on a directory.
 // Returns an open file within the directory that holds the lock.
 // The lock may be released by closing the returned file.
-func lockDirForWrite(dir string) (*os.File, error) {
-	lockFile, err := openLockFile(dir)
+func lockDir(dir string, create bool, lockType int) (*os.File, error) {
+	lockFile, err := openLockFile(dir, create)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open lock file: %s", err)
 	}
-	err = unix.Flock(int(lockFile.Fd()), unix.LOCK_EX)
+	err = unix.Flock(int(lockFile.Fd()), lockType)
 	if err != nil {
 		lockFile.Close()
-		return nil, fmt.Errorf("cannot place exclusive lock: %s", err)
+		return nil, fmt.Errorf("cannot place lock: %s", err)
+	}
+	_, err = os.Stat(dir)
+	if err != nil {
+		lockFile.Close()
+		return nil, fmt.Errorf("cannot stat: %s", err)
 	}
 	return lockFile, nil
+}
+
+// lockDirForWrite places an advisory exclusive lock on a directory.
+// Returns an open file within the directory that holds the lock.
+// The lock may be released by closing the returned file.
+func lockDirForWrite(dir string, create bool) (*os.File, error) {
+	return lockDir(dir, create, unix.LOCK_EX)
 }
 
 // lockDirForRead places an advisory shared lock on a directory.
 // Returns an open file within the directory that holds the lock.
 // The lock may be released by closing the returned file.
 func lockDirForRead(dir string) (*os.File, error) {
-	lockFile, err := openLockFile(dir)
-	if err != nil {
-		return nil, fmt.Errorf("cannot open lock file: %s", err)
-	}
-	err = unix.Flock(int(lockFile.Fd()), unix.LOCK_SH)
-	if err != nil {
-		lockFile.Close()
-		return nil, fmt.Errorf("cannot place shared lock: %s", err)
-	}
-	return lockFile, nil
+	return lockDir(dir, false, unix.LOCK_SH)
 }
