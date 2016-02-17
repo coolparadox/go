@@ -19,6 +19,7 @@ package concur
 
 import "github.com/coolparadox/go/sort/uint32slice"
 import "fmt"
+import "io"
 import "os"
 import "unicode"
 import "unicode/utf8"
@@ -110,7 +111,9 @@ func parseChar(r rune) (uint32, error) {
 
 // listKeyComponentsInDir returns all key components found in a subdirectory,
 // sorted in ascending or descending order.
-func listKeyComponentsInDir(dir string, keyBase uint32, ascending bool) ([]uint32, error) {
+// Parameter howMany defines the maximum number of components returned;
+// pass zero for unlimited.
+func listKeyComponentsInDir(dir string, keyBase uint32, ascending bool, howMany int) ([]uint32, error) {
 	answer := make([]uint32, 0, keyBase)
 	// Iterate through all names in directory.
 	var err error
@@ -122,11 +125,9 @@ func listKeyComponentsInDir(dir string, keyBase uint32, ascending bool) ([]uint3
 		return nil, fmt.Errorf("cannot open directory '%s': %s", dir, err)
 	}
 	defer f.Close()
-	names, err := f.Readdirnames(0)
-	if err != nil {
-		return nil, fmt.Errorf("cannot read directory '%s': %s", dir, err)
-	}
-	for _, name := range names {
+	var fis []os.FileInfo
+	for fis, err = f.Readdir(1); err == nil; fis, err = f.Readdir(1) {
+		name := fis[0].Name()
 		// If name is a key character, store its component value for answer.
 		char, n := utf8.DecodeRuneInString(name)
 		if char == utf8.RuneError {
@@ -143,6 +144,12 @@ func listKeyComponentsInDir(dir string, keyBase uint32, ascending bool) ([]uint3
 			continue
 		}
 		answer = append(answer, component)
+		if howMany != 0 && len(answer) >= howMany {
+			break
+		}
+	}
+	if err != nil && err != io.EOF {
+		return nil, fmt.Errorf("cannot read directory '%s': %s", dir, err)
 	}
 	// Sort answer slice before returning it.
 	if ascending {

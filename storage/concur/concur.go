@@ -337,7 +337,7 @@ func (r Concur) Erase(key uint32) error {
 		fullMarkPath := fmt.Sprintf("%s%c%s", targetDir, os.PathSeparator, fullMarkLabel)
 		os.RemoveAll(fullMarkPath)
 		// Erase empty directories up to top level.
-		kcs, err := listKeyComponentsInDir(targetDir, r.keyBase, true)
+		kcs, err := listKeyComponentsInDir(targetDir, r.keyBase, true, 1)
 		if err == nil && len(kcs) <= 0 {
 			os.RemoveAll(targetDir)
 		}

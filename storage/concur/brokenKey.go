@@ -116,7 +116,7 @@ func findKeyInLevel(br brokenKey, level int, baseDir string, keyBase uint32, key
 	kcDir := keyComponentPath(br, level+1, baseDir, keyDepth)
 	// Iterate through key components of this depth level.
 	// Assume components are sorted in ascending (descending) order.
-	kcs, err := listKeyComponentsInDir(kcDir, keyBase, ascending)
+	kcs, err := listKeyComponentsInDir(kcDir, keyBase, ascending, 0)
 	if err != nil {
 		return nil, fmt.Errorf("cannot list key components in '%s': %s", kcDir, err)
 	}
