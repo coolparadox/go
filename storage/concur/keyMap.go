@@ -17,7 +17,6 @@
 
 package concur
 
-import "github.com/coolparadox/go/sort/uint32slice"
 import "fmt"
 import "io"
 import "os"
@@ -109,53 +108,85 @@ func parseChar(r rune) (uint32, error) {
 	return 0, fmt.Errorf("unknown format character")
 }
 
-// listKeyComponentsInDir returns all key components found in a subdirectory,
-// sorted in ascending or descending order.
-// Parameter howMany defines the maximum number of components returned;
-// pass zero for unlimited.
-func listKeyComponentsInDir(dir string, keyBase uint32, ascending bool, howMany int) ([]uint32, error) {
-	answer := make([]uint32, 0, keyBase)
+// Modes for findKeyComponentInDir
+const (
+	findModeAny        = iota // ignore reference and return any component found
+	findModeAscending  = iota // smallest component not less than reference
+	findModeDescending = iota // largest component not greater than reference
+)
+
+// findKeyComponentInDir returns a key component found in a subdirectory.
+// Parameters reference and findMode controls search (see findMode* constants).
+//
+// KeyNotFoundError is returned if no matching component keys were found;
+// other errors indicate failure.
+func findKeyComponentInDir(dir string, keyBase uint32, reference uint32, findMode int) (uint32, error) {
 	// Iterate through all names in directory.
 	var err error
 	f, err := os.Open(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return answer, nil
+			return 0, KeyNotFoundError
 		}
-		return nil, fmt.Errorf("cannot open directory '%s': %s", dir, err)
+		return 0, fmt.Errorf("cannot open directory '%s': %s", dir, err)
 	}
 	defer f.Close()
+	var answer uint32
+	var foundCandidate bool
 	var fis []os.FileInfo
 	for fis, err = f.Readdir(1); err == nil; fis, err = f.Readdir(1) {
 		name := fis[0].Name()
-		// If name is a key character, store its component value for answer.
 		char, n := utf8.DecodeRuneInString(name)
 		if char == utf8.RuneError {
+			// File name is not utf8 encoded.
 			continue
 		}
 		if n < len(name) {
+			// File name contains more than one unicode character.
 			continue
 		}
 		component, err := parseChar(char)
 		if err != nil {
+			// Unicode character does not represent a key component.
 			continue
 		}
 		if component >= keyBase {
+			// Key component is out of range for this collection's key base.
 			continue
 		}
-		answer = append(answer, component)
-		if howMany != 0 && len(answer) >= howMany {
-			break
+		if component == reference {
+			return component, nil
+		}
+		switch findMode {
+		case findModeAny:
+			return component, nil
+		case findModeAscending:
+			if component > reference {
+				if !foundCandidate {
+					answer = component
+					foundCandidate = true
+				} else if component < answer {
+					answer = component
+				}
+			}
+		case findModeDescending:
+			if component < reference {
+				if !foundCandidate {
+					answer = component
+					foundCandidate = true
+				} else if component > answer {
+					answer = component
+				}
+			}
+		default:
+			return 0, fmt.Errorf("unknown find mode %v", findMode)
 		}
 	}
 	if err != nil && err != io.EOF {
-		return nil, fmt.Errorf("cannot read directory '%s': %s", dir, err)
+		return 0, fmt.Errorf("cannot read directory '%s': %s", dir, err)
 	}
-	// Sort answer slice before returning it.
-	if ascending {
-		uint32slice.SortUint32s(answer)
-	} else {
-		uint32slice.ReversedSortUint32s(answer)
+	if !foundCandidate {
+		return 0, KeyNotFoundError
 	}
 	return answer, nil
 }

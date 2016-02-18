@@ -114,41 +114,38 @@ func findKeyInLevel(br brokenKey, level int, baseDir string, keyBase uint32, key
 	// Find out where keys will be searched from.
 	// This can be in any valid depth level.
 	kcDir := keyComponentPath(br, level+1, baseDir, keyDepth)
-	// Iterate through key components of this depth level.
-	// Assume components are sorted in ascending (descending) order.
-	kcs, err := listKeyComponentsInDir(kcDir, keyBase, ascending, 0)
+	// Find a matching key component in this depth level.
+	var findMode int = findModeAscending
+	if !ascending { findMode = findModeDescending }
+	kc, err := findKeyComponentInDir(kcDir, keyBase, br[level], findMode)
 	if err != nil {
+		if err == KeyNotFoundError {
+			// Search exausted and no keys found.
+			return nil, nil
+		}
 		return nil, fmt.Errorf("cannot list key components in '%s': %s", kcDir, err)
 	}
-	for _, kc := range kcs {
-		// Discard component if it's smaller (larger) than the reference.
-		if (ascending && kc < br[level]) || (!ascending && kc > br[level]) {
-			continue
-		}
-		if level <= 0 {
-			// Found a matching component in the deepest level.
-			answer := newBrokenKey(keyDepth)
-			copy(answer, br)
-			answer[0] = kc
-			return answer, nil
-		}
-		// Found a matching component in not the deepest level.
-		// Answer the smallest (largest) key under the next depth level
-		// from this component.
-		brn := newBrokenKey(keyDepth)
-		if !ascending {
-			for i := 0; i < level; i++ {
-				brn[i] = keyBase - 1
-			}
-		}
-		brn[level] = kc
-		for i := level + 1; i < keyDepth; i++ {
-			brn[i] = br[i]
-		}
-		return findKeyInLevel(brn, level-1, baseDir, keyBase, keyDepth, ascending)
+	if level <= 0 {
+		// Found a matching component in the deepest level.
+		answer := newBrokenKey(keyDepth)
+		copy(answer, br)
+		answer[0] = kc
+		return answer, nil
 	}
-	// Search exausted and no keys found.
-	return nil, nil
+	// Found a matching component in not the deepest level.
+	// Answer the smallest (largest) key under the next depth level
+	// from this component.
+	brn := newBrokenKey(keyDepth)
+	if !ascending {
+		for i := 0; i < level; i++ {
+			brn[i] = keyBase - 1
+		}
+	}
+	brn[level] = kc
+	for i := level + 1; i < keyDepth; i++ {
+		brn[i] = br[i]
+	}
+	return findKeyInLevel(brn, level-1, baseDir, keyBase, keyDepth, ascending)
 }
 
 func findFreeKeyFromLevel(from brokenKey, level int, baseDir string, keyBase uint32, keyDepth int) (brokenKey, error) {
