@@ -53,7 +53,7 @@ func TestInit(t *testing.T) {
 
 }
 
-func TestWipe(t *testing.T) {
+func TestWipeEmpty(t *testing.T) {
 	var err error
 	err = concur.Wipe(myPath)
 	if err != nil {
@@ -74,7 +74,15 @@ func TestNewEmpty(t *testing.T) {
 	var err error
 	db, err = concur.New(myPath, uint32(keyBase))
 	if err != nil {
-		t.Fatalf("concur.New failed: %s", err)
+		t.Fatalf("concur.New failed in creating a new database: %s", err)
+	}
+}
+
+func TestNewNotEmpty(t *testing.T) {
+	var err error
+	_, err = concur.New(myPath, rand.Uint32())
+	if err != nil {
+		t.Fatalf("concur.New failed in opening an existent database: %s", err)
 	}
 }
 
@@ -270,6 +278,14 @@ func TestExists(t *testing.T) {
 				t.Fatalf("concur.Exists mismatch for key %v: %v", key, exists)
 			}
 		}
+	}
+}
+
+func TestWipeNotEmpty(t *testing.T) {
+	var err error
+	err = concur.Wipe(myPath)
+	if err != nil {
+		t.Fatalf("concur.Wipe failed: %s", err)
 	}
 }
 
