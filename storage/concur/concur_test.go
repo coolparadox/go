@@ -275,8 +275,8 @@ func TestExists(t *testing.T) {
 
 func Example() {
 
-	// Warning: error handling is purposely ignored in some places
-	// for didactic purposes.
+	// Warning: error handling is purposely ignored
+	// in some places for didactic purposes.
 
 	// Create an empty database
 	dbPath := "/tmp/my_db"

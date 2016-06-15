@@ -36,23 +36,23 @@ Issues
 Keys are 32 bit unsigned integers. Values are byte sequences of arbitrary
 length.
 
-Apart from other storage implementations that map a single file as the
+Apart from storage implementations that map a single file as the
 database, this package takes an experimental approach where keys are managed
-using filesystem subdirectories (see Key Management below).
+using filesystem subdirectories (see Key Mapping Internals below).
 Therefore the filesystem chosen for storage
 is the real engine that maps keys to values, and their designers are the ones
-who must take credit if this package happens to achieve satisfactory
-performance.
+who must be given credit if package Concur happens to perform satisfactorily.
 
 Although concur write methods commit changes to filesystem immediately on
-successful return, the operating system can make use of memory buffers for
-increasing performance of filesystem access. Users may need to manually
+successful return,
+commited data may reside temporarily in on-memory filesystem's caches.
+Users may need to manually
 flush updates to disk (eg sync, umount) to guarantee that all updates to the
 collection are written to disk.
 
 Wipe method can take a long time to return.
 
-Key Management
+Key Mapping Internals
 
 (This is an explanation of how 32 bit keys are internally mapped to values
 by the implementation. You don't really need to know it for using concur;
@@ -107,7 +107,7 @@ const (
 // Depth*Base are convenience values of numeric bases of key components to be
 // used when creating a new database.
 // These values give the most efficient occupation of subdirectories in the
-// filesystem (see Key Management).
+// filesystem (see Key Mapping Internals).
 const (
 	Depth2Base  = 0x10000
 	Depth4Base  = 0x100
@@ -180,8 +180,9 @@ func bytesToUint32(b []byte) (uint32, error) {
 // package concur, it must be empty.
 //
 // Parameter base is the numeric base of key components for naming files and
-// subdirectories under the collection (see Key Management for details).
-// It has effect only during creation of a collection.
+// subdirectories under the collection (see Key Mapping Internals for details).
+// It has effect only during creation of a new collection
+// (i.e., it's ignored when opening an existent collection).
 // Pass zero for a sane default.
 func New(dir string, base uint32) (Concur, error) {
 	if !path.IsAbs(dir) {
@@ -267,7 +268,7 @@ func New(dir string, base uint32) (Concur, error) {
 	}, nil
 }
 
-// SaveAs creates (or updates) a key with a new value.
+// SaveAs creates (or updates) a given key with a new value.
 func (r Concur) SaveAs(key uint32, value []byte) error {
 	err := r.concurLabelExists()
 	if err != nil {
