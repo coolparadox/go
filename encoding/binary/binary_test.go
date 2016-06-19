@@ -81,3 +81,36 @@ func TestUint64Encoder(t *testing.T) {
 		t.Fatalf("marshal / unmarshal mismatch")
 	}
 }
+
+func TestStructEncoder(t *testing.T) {
+	var myData struct {
+		A uint32
+		B uint64
+	}
+	t.Logf("%T", myData)
+	encoder, err := binary.NewEncoder(&myData)
+	if err != nil {
+		t.Fatalf("New() failed: %s", err)
+	}
+	t.Logf("myData type signature = %s", encoder.Signature())
+	var b bytes.Buffer
+	myData.B = uint64(rand.Uint32())
+	myData.B *= 0x100000000
+	myData.B += uint64(rand.Uint32())
+	_, err = encoder.Marshal(&b)
+	if err != nil {
+		t.Fatalf("Marshal() failed: %s", err)
+	}
+	t.Logf("marshal %v --> %v", myData, b.Bytes())
+	myData2 := myData
+	myData.B = 0
+	var n int
+	n, err = encoder.Unmarshal(&b)
+	if err != nil {
+		t.Fatalf("Unmarshal() failed: %s", err)
+	}
+	t.Logf("unmarshal %v bytes --> %v", n, myData)
+	if myData != myData2 {
+		t.Fatalf("marshal / unmarshal mismatch")
+	}
+}

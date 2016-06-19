@@ -31,7 +31,11 @@ type Encoder interface {
 }
 
 func NewEncoder(data interface{}) (Encoder, error) {
-	v := reflect.ValueOf(data)
+	return MakeEncoder(reflect.ValueOf(data))
+}
+
+func MakeEncoder(v reflect.Value) (Encoder, error) {
+	var err error
 	if v.Kind() != reflect.Ptr {
 		return nil, fmt.Errorf("storage variable must be passed by reference")
 	}
@@ -40,8 +44,23 @@ func NewEncoder(data interface{}) (Encoder, error) {
 	default:
 		return nil, fmt.Errorf("unsupported data type: %s", k)
 	case reflect.Uint32:
-		return Uint32Encoder{data.(*uint32)}, nil
+		return Uint32Encoder{v.Interface().(*uint32)}, nil
 	case reflect.Uint64:
-		return Uint64Encoder{data.(*uint64)}, nil
+		return Uint64Encoder{v.Interface().(*uint64)}, nil
+	case reflect.Struct:
+		v = v.Elem()
+		n := v.NumField()
+		store := make([]Encoder, n, n)
+		for i := 0; i < n; i++ {
+			f := v.Type().Field(i)
+			if f.PkgPath != "" {
+				return nil, fmt.Errorf("struct field '%s' is unexported", f.Name)
+			}
+			store[i], err = MakeEncoder(v.Field(i).Addr())
+			if err != nil {
+				return nil, fmt.Errorf("cannot make encoder for struct field %s: %s", v.Type().Field(i).Name, err)
+			}
+		}
+		return StructEncoder{store}, nil
 	}
 }
