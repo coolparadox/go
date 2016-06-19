@@ -20,28 +20,34 @@ Package binary implements binary serialization of Go types.
 */
 package binary
 
-import "fmt"
 import "io"
-import "reflect"
 
-type Encoder interface {
-	Signature() string
-	Marshal(io.Writer) (int, error)
-	Unmarshal(io.Reader) (int, error)
+type Uint32Encoder struct{ store *uint32 }
+
+func (Uint32Encoder) Signature() string {
+	return "uint32"
 }
 
-func NewEncoder(data interface{}) (Encoder, error) {
-	v := reflect.ValueOf(data)
-	if v.Kind() != reflect.Ptr {
-		return nil, fmt.Errorf("storage variable must be passed by reference")
+func (self Uint32Encoder) Marshal(w io.Writer) (int, error) {
+	aux := *self.store
+	bs := make([]byte, 4, 4)
+	for i := 0; i < 4; i++ {
+		bs[i] = byte(aux % 0x100)
+		aux /= 0x100
 	}
-	k := v.Elem().Kind()
-	switch k {
-	default:
-		return nil, fmt.Errorf("unsupported data type: %s", k)
-	case reflect.Uint32:
-		return Uint32Encoder{data.(*uint32)}, nil
-	case reflect.Uint64:
-		return Uint64Encoder{data.(*uint64)}, nil
+	return w.Write(bs)
+}
+
+func (self Uint32Encoder) Unmarshal(r io.Reader) (int, error) {
+	bs := make([]byte, 4, 4)
+	n, err := r.Read(bs)
+	if err != nil {
+		return n, err
 	}
+	*self.store = 0
+	for i := 0; i < 4; i++ {
+		*self.store *= 0x100
+		*self.store += uint32(bs[3-i])
+	}
+	return n, nil
 }

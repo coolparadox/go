@@ -22,36 +22,32 @@ package binary
 
 import "io"
 
-type Uint32 struct{ store *uint32 }
+type Uint64Encoder struct{ store *uint64 }
 
-func NewUint32(store *uint32) Uint32 {
-	return Uint32{store: store}
+func (Uint64Encoder) Signature() string {
+	return "uint64"
 }
 
-func (Uint32) Signature() string {
-	return "uint32"
-}
-
-func (self Uint32) Marshal(w io.Writer) (int, error) {
+func (self Uint64Encoder) Marshal(w io.Writer) (int, error) {
 	aux := *self.store
-	bs := make([]byte, 4, 4)
-	for i := 0; i < 4; i++ {
+	bs := make([]byte, 8, 8)
+	for i := 0; i < 8; i++ {
 		bs[i] = byte(aux % 0x100)
 		aux /= 0x100
 	}
 	return w.Write(bs)
 }
 
-func (self Uint32) Unmarshal(r io.Reader) (int, error) {
-	bs := make([]byte, 4, 4)
+func (self Uint64Encoder) Unmarshal(r io.Reader) (int, error) {
+	bs := make([]byte, 8, 8)
 	n, err := r.Read(bs)
 	if err != nil {
 		return n, err
 	}
 	*self.store = 0
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 8; i++ {
 		*self.store *= 0x100
-		*self.store += uint32(bs[3-i])
+		*self.store += uint64(bs[7-i])
 	}
 	return n, nil
 }

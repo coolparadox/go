@@ -22,17 +22,19 @@ import "math/rand"
 import "testing"
 import "github.com/coolparadox/go/encoding/binary"
 
-var myData uint32
-
-func TestNew(t *testing.T) {
+func init() {
 	rand.Seed(time.Now().UnixNano())
-	myData = rand.Uint32()
-	encoder, err := binary.New(&myData)
+}
+
+func TestUint32Encoder(t *testing.T) {
+	var myData uint32
+	encoder, err := binary.NewEncoder(&myData)
 	if err != nil {
 		t.Fatalf("New() failed: %s", err)
 	}
 	t.Logf("myData type signature = %s", encoder.Signature())
 	var b bytes.Buffer
+	myData = rand.Uint32()
 	_, err = encoder.Marshal(&b)
 	if err != nil {
 		t.Fatalf("Marshal() failed: %s", err)
@@ -49,5 +51,33 @@ func TestNew(t *testing.T) {
 	if myData != myData2 {
 		t.Fatalf("marshal / unmarshal mismatch")
 	}
+}
 
+func TestUint64Encoder(t *testing.T) {
+	var myData uint64
+	encoder, err := binary.NewEncoder(&myData)
+	if err != nil {
+		t.Fatalf("New() failed: %s", err)
+	}
+	t.Logf("myData type signature = %s", encoder.Signature())
+	var b bytes.Buffer
+	myData = uint64(rand.Uint32())
+	myData *= 0x100000000
+	myData += uint64(rand.Uint32())
+	_, err = encoder.Marshal(&b)
+	if err != nil {
+		t.Fatalf("Marshal() failed: %s", err)
+	}
+	t.Logf("marshal %v --> %v", myData, b.Bytes())
+	myData2 := myData
+	myData = 0
+	var n int
+	n, err = encoder.Unmarshal(&b)
+	if err != nil {
+		t.Fatalf("Unmarshal() failed: %s", err)
+	}
+	t.Logf("unmarshal %v bytes --> %v", n, myData)
+	if myData != myData2 {
+		t.Fatalf("marshal / unmarshal mismatch")
+	}
 }
