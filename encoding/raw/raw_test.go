@@ -17,15 +17,39 @@
 
 package raw_test
 
+import "bytes"
+import "time"
+import "math/rand"
 import "testing"
 import "github.com/coolparadox/go/encoding/raw"
 
 var myData uint32
 
 func TestNew(t *testing.T) {
-	_, err := raw.New(&myData)
+	rand.Seed(time.Now().UnixNano())
+	myData = rand.Uint32()
+	encoder, err := raw.New(&myData)
 	if err != nil {
 		t.Fatalf("New() failed: %s", err)
 	}
+	t.Logf("myData type signature = %s", encoder.Signature())
+	var b bytes.Buffer
+	_, err = encoder.Marshal(&b)
+	if err != nil {
+		t.Fatalf("Marshal() failed: %s", err)
+	}
+	t.Logf("marshal %v --> %v", myData, b.Bytes())
+	myData2 := myData
+	myData = 0
+	var n int
+	n, err = encoder.Unmarshal(&b)
+	if err != nil {
+		t.Fatalf("Unmarshal() failed: %s", err)
+	}
+	t.Logf("unmarshal %v bytes --> %v", n, myData)
+	if (myData != myData2) {
+		t.Fatalf("marshal / unmarshal mismatch")
+	}
+
 }
 

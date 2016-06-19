@@ -23,16 +23,63 @@ referenced memory.
 package raw
 
 import "fmt"
+import "io"
+import "reflect"
 
-type Encoder interface {
-	TypeSpec() string
-	Marshall() []byte
-	Unmarshall([]byte) error
+type Encoder struct {
+	EncodingType
 }
 
 func New(data interface{}) (Encoder, error) {
 
-	return nil, fmt.Errorf("not yet implemented")
+	dataType := reflect.TypeOf(data)
+	dataKind := dataType.Kind()
+	if (dataKind != reflect.Ptr) {
+		return Encoder{}, fmt.Errorf("storage variable must be passed by reference")
+	}
+	dataType = reflect.ValueOf(data).Elem().Type()
+	dataKind = dataType.Kind()
+	if (dataKind != reflect.Uint32) {
+		return Encoder{}, fmt.Errorf("unsupported data type: %s", dataKind)
+	}
+	var backstore *uint32 = data.(*uint32)
+	return Encoder{EncodingType:Uint32{backstore:backstore}}, nil
 
+}
+
+type EncodingType interface {
+	Signature() string
+	Marshal(io.Writer) (int, error)
+	Unmarshal(io.Reader) (int, error)
+}
+
+type Uint32 struct { backstore *uint32 }
+
+func (Uint32) Signature() string {
+	return "uint32"
+}
+
+func (self Uint32) Marshal(w io.Writer) (int, error) {
+	aux := *self.backstore
+	bs := make([]byte, 4, 4)
+	for i := 0; i < 4; i++ {
+		bs[i] = byte(aux % 0x100)
+		aux /= 0x100
+	}
+	return w.Write(bs)
+}
+
+func (self Uint32) Unmarshal(r io.Reader) (int, error) {
+	bs := make([]byte, 4, 4)
+	n, err := r.Read(bs)
+	if err != nil {
+		return n, err
+	}
+	*self.backstore = 0
+	for i := 0; i < 4; i++ {
+		*self.backstore *= 0x100
+		*self.backstore += uint32(bs[3-i])
+	}
+	return n, nil
 }
 
