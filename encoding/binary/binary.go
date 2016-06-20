@@ -51,6 +51,8 @@ func MakeEncoder(v reflect.Value) (Encoder, error) {
 		return Uint32Encoder{v.Interface().(*uint32)}, nil
 	case reflect.Uint64:
 		return Uint64Encoder{v.Interface().(*uint64)}, nil
+	case reflect.Int16:
+		return Int16Encoder{v.Interface().(*int16)}, nil
 	case reflect.Int32:
 		return Int32Encoder{v.Interface().(*int32)}, nil
 	case reflect.Int64:
