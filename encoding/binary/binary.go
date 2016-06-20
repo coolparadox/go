@@ -43,6 +43,8 @@ func MakeEncoder(v reflect.Value) (Encoder, error) {
 	switch k {
 	default:
 		return nil, fmt.Errorf("unsupported data type: %s", k)
+	case reflect.Uint16:
+		return Uint16Encoder{v.Interface().(*uint16)}, nil
 	case reflect.Uint32:
 		return Uint32Encoder{v.Interface().(*uint32)}, nil
 	case reflect.Uint64:
