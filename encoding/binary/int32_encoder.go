@@ -18,26 +18,31 @@ package binary
 
 import "io"
 
-func marshalInteger(value uint64, depth int, w io.Writer) (int, error) {
-	sequence := make([]byte, depth, depth)
-	for i := 0; i < depth; i++ {
-		sequence[i] = byte(value % 0x100)
-		value /= 0x100
-	}
-	return w.Write(sequence)
+type Int32Encoder struct{ store *int32 }
+
+func (Int32Encoder) Signature() string {
+	return "int32"
 }
 
-func unmarshalInteger(r io.Reader, depth int) (uint64, int, error) {
-	sequence := make([]byte, depth, depth)
-	n, err := r.Read(sequence)
+func (self Int32Encoder) Marshal(w io.Writer) (int, error) {
+	var aux uint32
+	if *self.store >= 0 {
+		aux = uint32(*self.store) + 1 + 0x7FFFFFFF
+	} else {
+		aux = uint32(*self.store + 1 + 0x7FFFFFFF)
+	}
+	return marshalInteger(uint64(aux), 4, w)
+}
+
+func (self Int32Encoder) Unmarshal(r io.Reader) (int, error) {
+	value, n, err := unmarshalInteger(r, 4)
 	if err != nil {
-		return 0, n, err
+		return n, err
 	}
-	var answer uint64
-	for i := 0; i < depth; i++ {
-		answer *= 0x100
-		answer += uint64(sequence[depth-1-i])
+	if value >= (1 + 0x7FFFFFFF) {
+		*self.store = int32(value - 1 - 0x7FFFFFFF)
+	} else {
+		*self.store = int32(value) - 1 - 0x7FFFFFFF
 	}
-	return answer, n, nil
+	return n, nil
 }
-
