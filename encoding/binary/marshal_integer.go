@@ -18,40 +18,25 @@ package binary
 
 import "io"
 
-type StructEncoder struct{ store []Encoder }
-
-func (self StructEncoder) Signature() string {
-	ans := "struct {"
-	for i := 0; i < len(self.store); i++ {
-		if i > 0 {
-			ans += ";"
-		}
-		ans += " " + self.store[i].Signature()
+func marshalInteger(value uint64, depth int, w io.Writer) (int, error) {
+	sequence := make([]byte, depth, depth)
+	for i := 0; i < depth; i++ {
+		sequence[i] = byte(value % 0x100)
+		value /= 0x100
 	}
-	ans += " }"
-	return ans
+	return w.Write(sequence)
 }
 
-func (self StructEncoder) Marshal(w io.Writer) (int, error) {
-	var count int
-	for i := 0; i < len(self.store); i++ {
-		n, err := self.store[i].Marshal(w)
-		count += n
-		if err != nil {
-			return count, err
-		}
+func unmarshalInteger(r io.Reader, depth int) (uint64, int, error) {
+	sequence := make([]byte, depth, depth)
+	n, err := r.Read(sequence)
+	if err != nil {
+		return 0, n, err
 	}
-	return count, nil
-}
-
-func (self StructEncoder) Unmarshal(r io.Reader) (int, error) {
-	var count int
-	for i := 0; i < len(self.store); i++ {
-		n, err := self.store[i].Unmarshal(r)
-		count += n
-		if err != nil {
-			return count, err
-		}
+	var answer uint64
+	for i := 0; i < depth; i++ {
+		answer *= 0x100
+		answer += uint64(sequence[depth-1-i])
 	}
-	return count, nil
+	return answer, n, nil
 }

@@ -30,7 +30,7 @@ type Encoder interface {
 	Unmarshal(io.Reader) (int, error)
 }
 
-func NewEncoder(data interface{}) (Encoder, error) {
+func New(data interface{}) (Encoder, error) {
 	return MakeEncoder(reflect.ValueOf(data))
 }
 

@@ -28,11 +28,16 @@ func init() {
 
 func TestUint32Encoder(t *testing.T) {
 	var myData uint32
-	encoder, err := binary.NewEncoder(&myData)
+	expected_signature := "uint32"
+	encoder, err := binary.New(&myData)
 	if err != nil {
 		t.Fatalf("New() failed: %s", err)
 	}
-	t.Logf("myData type signature = %s", encoder.Signature())
+	signature := encoder.Signature()
+	if signature != expected_signature {
+		t.Fatalf("signature mismatch: expected '%s', received '%s'", expected_signature, signature)
+	}
+	t.Logf("myData type signature = %s", signature)
 	var b bytes.Buffer
 	myData = rand.Uint32()
 	_, err = encoder.Marshal(&b)
@@ -49,17 +54,22 @@ func TestUint32Encoder(t *testing.T) {
 	}
 	t.Logf("unmarshal %v bytes --> %v", n, myData)
 	if myData != myData2 {
-		t.Fatalf("marshal / unmarshal mismatch")
+	t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
 	}
 }
 
 func TestUint64Encoder(t *testing.T) {
 	var myData uint64
-	encoder, err := binary.NewEncoder(&myData)
+	expected_signature := "uint64"
+	encoder, err := binary.New(&myData)
 	if err != nil {
 		t.Fatalf("New() failed: %s", err)
 	}
-	t.Logf("myData type signature = %s", encoder.Signature())
+	signature := encoder.Signature()
+	if signature != expected_signature {
+		t.Fatalf("signature mismatch: expected '%s', received '%s'", expected_signature, signature)
+	}
+	t.Logf("myData type signature = %s", signature)
 	var b bytes.Buffer
 	myData = uint64(rand.Uint32())
 	myData *= 0x100000000
@@ -78,32 +88,39 @@ func TestUint64Encoder(t *testing.T) {
 	}
 	t.Logf("unmarshal %v bytes --> %v", n, myData)
 	if myData != myData2 {
-		t.Fatalf("marshal / unmarshal mismatch")
+	t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
 	}
 }
 
 func TestStructEncoder(t *testing.T) {
 	var myData struct {
 		A uint32
-		B uint64
+		B uint32
+		C uint32
 	}
-	t.Logf("%T", myData)
-	encoder, err := binary.NewEncoder(&myData)
+	expected_signature := "struct { uint32; uint32; uint32 }"
+	encoder, err := binary.New(&myData)
 	if err != nil {
 		t.Fatalf("New() failed: %s", err)
 	}
-	t.Logf("myData type signature = %s", encoder.Signature())
+	signature := encoder.Signature()
+	if signature != expected_signature {
+		t.Fatalf("signature mismatch: expected '%s', received '%s'", expected_signature, signature)
+	}
+	t.Logf("myData type signature = %s", signature)
 	var b bytes.Buffer
-	myData.B = uint64(rand.Uint32())
-	myData.B *= 0x100000000
-	myData.B += uint64(rand.Uint32())
+	myData.A = rand.Uint32()
+	myData.B = rand.Uint32()
+	myData.C = rand.Uint32()
 	_, err = encoder.Marshal(&b)
 	if err != nil {
 		t.Fatalf("Marshal() failed: %s", err)
 	}
 	t.Logf("marshal %v --> %v", myData, b.Bytes())
 	myData2 := myData
+	myData.A = 0
 	myData.B = 0
+	myData.C = 0
 	var n int
 	n, err = encoder.Unmarshal(&b)
 	if err != nil {
@@ -111,6 +128,7 @@ func TestStructEncoder(t *testing.T) {
 	}
 	t.Logf("unmarshal %v bytes --> %v", n, myData)
 	if myData != myData2 {
-		t.Fatalf("marshal / unmarshal mismatch")
+	t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
 	}
 }
+

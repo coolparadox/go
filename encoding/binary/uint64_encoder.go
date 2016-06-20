@@ -14,10 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Binary. If not, see <http://www.gnu.org/licenses/>.
 
-/*
-Package binary implements binary serialization of Go types.
-
-*/
 package binary
 
 import "io"
@@ -29,25 +25,14 @@ func (Uint64Encoder) Signature() string {
 }
 
 func (self Uint64Encoder) Marshal(w io.Writer) (int, error) {
-	aux := *self.store
-	bs := make([]byte, 8, 8)
-	for i := 0; i < 8; i++ {
-		bs[i] = byte(aux % 0x100)
-		aux /= 0x100
-	}
-	return w.Write(bs)
+	return marshalInteger(*self.store, 8, w)
 }
 
 func (self Uint64Encoder) Unmarshal(r io.Reader) (int, error) {
-	bs := make([]byte, 8, 8)
-	n, err := r.Read(bs)
+	value, n, err := unmarshalInteger(r, 8)
 	if err != nil {
 		return n, err
 	}
-	*self.store = 0
-	for i := 0; i < 8; i++ {
-		*self.store *= 0x100
-		*self.store += uint64(bs[7-i])
-	}
+	*self.store = value
 	return n, nil
 }
