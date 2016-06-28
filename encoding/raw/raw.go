@@ -74,5 +74,7 @@ func MakeEncoder(v reflect.Value) (Encoder, error) {
 			}
 		}
 		return StructEncoder{store}, nil
+	case reflect.Slice:
+		return SliceEncoder{}, nil
 	}
 }

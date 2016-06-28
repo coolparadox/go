@@ -19,6 +19,7 @@ package raw_test
 import "bytes"
 import "time"
 import "math/rand"
+import "reflect"
 import "testing"
 import "github.com/coolparadox/go/encoding/raw"
 
@@ -105,7 +106,7 @@ func TestUint8Encoder(t *testing.T) {
 		t.Fatalf("Unmarshal() failed: %s", err)
 	}
 	t.Logf("unmarshal %v bytes --> %v", n, myData)
-	if myData != myData2 {
+	if !reflect.DeepEqual(myData, myData2) {
 		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
 	}
 }
@@ -137,7 +138,7 @@ func TestInt8Encoder(t *testing.T) {
 		t.Fatalf("Unmarshal() failed: %s", err)
 	}
 	t.Logf("unmarshal %v bytes --> %v", n, myData)
-	if myData != myData2 {
+	if !reflect.DeepEqual(myData, myData2) {
 		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
 	}
 }
@@ -169,7 +170,7 @@ func TestUint16Encoder(t *testing.T) {
 		t.Fatalf("Unmarshal() failed: %s", err)
 	}
 	t.Logf("unmarshal %v bytes --> %v", n, myData)
-	if myData != myData2 {
+	if !reflect.DeepEqual(myData, myData2) {
 		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
 	}
 }
@@ -201,7 +202,7 @@ func TestInt16Encoder(t *testing.T) {
 		t.Fatalf("Unmarshal() failed: %s", err)
 	}
 	t.Logf("unmarshal %v bytes --> %v", n, myData)
-	if myData != myData2 {
+	if !reflect.DeepEqual(myData, myData2) {
 		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
 	}
 }
@@ -233,7 +234,7 @@ func TestUint32Encoder(t *testing.T) {
 		t.Fatalf("Unmarshal() failed: %s", err)
 	}
 	t.Logf("unmarshal %v bytes --> %v", n, myData)
-	if myData != myData2 {
+	if !reflect.DeepEqual(myData, myData2) {
 		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
 	}
 }
@@ -265,7 +266,7 @@ func TestInt32Encoder(t *testing.T) {
 		t.Fatalf("Unmarshal() failed: %s", err)
 	}
 	t.Logf("unmarshal %v bytes --> %v", n, myData)
-	if myData != myData2 {
+	if !reflect.DeepEqual(myData, myData2) {
 		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
 	}
 }
@@ -297,7 +298,7 @@ func TestUint64Encoder(t *testing.T) {
 		t.Fatalf("Unmarshal() failed: %s", err)
 	}
 	t.Logf("unmarshal %v bytes --> %v", n, myData)
-	if myData != myData2 {
+	if !reflect.DeepEqual(myData, myData2) {
 		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
 	}
 }
@@ -329,7 +330,7 @@ func TestInt64Encoder(t *testing.T) {
 		t.Fatalf("Unmarshal() failed: %s", err)
 	}
 	t.Logf("unmarshal %v bytes --> %v", n, myData)
-	if myData != myData2 {
+	if !reflect.DeepEqual(myData, myData2) {
 		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
 	}
 }
@@ -369,7 +370,41 @@ func TestStructEncoder(t *testing.T) {
 		t.Fatalf("Unmarshal() failed: %s", err)
 	}
 	t.Logf("unmarshal %v bytes --> %v", n, myData)
-	if myData != myData2 {
+	if !reflect.DeepEqual(myData, myData2) {
+		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
+	}
+}
+
+func TestSliceEncoder(t *testing.T) {
+	n := int(random_uint8())
+	myData := make([]uint32, n, n)
+	expected_signature := "[]uint32"
+	encoder, err := raw.New(&myData)
+	if err != nil {
+		t.Fatalf("New() failed: %s", err)
+	}
+	signature := encoder.Signature()
+	if signature != expected_signature {
+		t.Fatalf("signature mismatch: expected '%s', received '%s'", expected_signature, signature)
+	}
+	t.Logf("myData type signature = %s", signature)
+	for i := 0; i < len(myData); i++ {
+		myData[i] = random_uint32()
+	}
+	var b bytes.Buffer
+	_, err = encoder.Marshal(&b)
+	if err != nil {
+		t.Fatalf("Marshal() failed: %s", err)
+	}
+	t.Logf("marshal %v --> %v", myData, b.Bytes())
+	myData2 := myData
+	myData = nil
+	n, err = encoder.Unmarshal(&b)
+	if err != nil {
+		t.Fatalf("Unmarshal() failed: %s", err)
+	}
+	t.Logf("unmarshal %v bytes --> %v", n, myData)
+	if !reflect.DeepEqual(myData, myData2) {
 		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
 	}
 }

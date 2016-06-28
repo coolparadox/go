@@ -16,27 +16,19 @@
 
 package raw
 
+import "fmt"
 import "io"
 
-func marshalInteger(value uint64, depth int, w io.Writer) (int, error) {
-	sequence := make([]byte, depth, depth)
-	for i := 0; i < depth; i++ {
-		sequence[i] = byte(value % 0x100)
-		value /= 0x100
-	}
-	return w.Write(sequence)
+type SliceEncoder struct{ }
+
+func (self SliceEncoder) Signature() string {
+	return "not yet implemented"
 }
 
-func unmarshalInteger(r io.Reader, depth int) (uint64, int, error) {
-	sequence := make([]byte, depth, depth)
-	n, err := r.Read(sequence)
-	if err != nil {
-		return 0, n, err
-	}
-	var answer uint64
-	for i := 0; i < depth; i++ {
-		answer *= 0x100
-		answer += uint64(sequence[depth-1-i])
-	}
-	return answer, n, nil
+func (self SliceEncoder) Marshal(w io.Writer) (int, error) {
+	return 0, fmt.Errorf("not yet implemented")
+}
+
+func (self SliceEncoder) Unmarshal(r io.Reader) (int, error) {
+	return 0, fmt.Errorf("not yet implemented")
 }
