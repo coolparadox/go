@@ -1,26 +1,26 @@
 // Copyright 2016 Rafael Lorandi <coolparadox@gmail.com>
-// This file is part of Binary, a binary encoder of Go types.
+// This file is part of Raw, a binary encoder of Go types.
 //
-// Binary is free software: you can redistribute it and/or modify
+// Raw is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// Binary is distributed in the hope that it will be useful,
+// Raw is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Binary. If not, see <http://www.gnu.org/licenses/>.
+// along with Raw. If not, see <http://www.gnu.org/licenses/>.
 
-package binary_test
+package raw_test
 
 import "bytes"
 import "time"
 import "math/rand"
 import "testing"
-import "github.com/coolparadox/go/encoding/binary"
+import "github.com/coolparadox/go/encoding/raw"
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -81,7 +81,7 @@ func random_int64() int64 {
 func TestUint8Encoder(t *testing.T) {
 	var myData uint8
 	expected_signature := "uint8"
-	encoder, err := binary.New(&myData)
+	encoder, err := raw.New(&myData)
 	if err != nil {
 		t.Fatalf("New() failed: %s", err)
 	}
@@ -113,7 +113,7 @@ func TestUint8Encoder(t *testing.T) {
 func TestInt8Encoder(t *testing.T) {
 	var myData int8
 	expected_signature := "int8"
-	encoder, err := binary.New(&myData)
+	encoder, err := raw.New(&myData)
 	if err != nil {
 		t.Fatalf("New() failed: %s", err)
 	}
@@ -145,7 +145,7 @@ func TestInt8Encoder(t *testing.T) {
 func TestUint16Encoder(t *testing.T) {
 	var myData uint16
 	expected_signature := "uint16"
-	encoder, err := binary.New(&myData)
+	encoder, err := raw.New(&myData)
 	if err != nil {
 		t.Fatalf("New() failed: %s", err)
 	}
@@ -177,7 +177,7 @@ func TestUint16Encoder(t *testing.T) {
 func TestInt16Encoder(t *testing.T) {
 	var myData int16
 	expected_signature := "int16"
-	encoder, err := binary.New(&myData)
+	encoder, err := raw.New(&myData)
 	if err != nil {
 		t.Fatalf("New() failed: %s", err)
 	}
@@ -209,7 +209,7 @@ func TestInt16Encoder(t *testing.T) {
 func TestUint32Encoder(t *testing.T) {
 	var myData uint32
 	expected_signature := "uint32"
-	encoder, err := binary.New(&myData)
+	encoder, err := raw.New(&myData)
 	if err != nil {
 		t.Fatalf("New() failed: %s", err)
 	}
@@ -241,7 +241,7 @@ func TestUint32Encoder(t *testing.T) {
 func TestInt32Encoder(t *testing.T) {
 	var myData int32
 	expected_signature := "int32"
-	encoder, err := binary.New(&myData)
+	encoder, err := raw.New(&myData)
 	if err != nil {
 		t.Fatalf("New() failed: %s", err)
 	}
@@ -273,7 +273,7 @@ func TestInt32Encoder(t *testing.T) {
 func TestUint64Encoder(t *testing.T) {
 	var myData uint64
 	expected_signature := "uint64"
-	encoder, err := binary.New(&myData)
+	encoder, err := raw.New(&myData)
 	if err != nil {
 		t.Fatalf("New() failed: %s", err)
 	}
@@ -305,7 +305,7 @@ func TestUint64Encoder(t *testing.T) {
 func TestInt64Encoder(t *testing.T) {
 	var myData int64
 	expected_signature := "int64"
-	encoder, err := binary.New(&myData)
+	encoder, err := raw.New(&myData)
 	if err != nil {
 		t.Fatalf("New() failed: %s", err)
 	}
@@ -341,7 +341,7 @@ func TestStructEncoder(t *testing.T) {
 		C uint8
 	}
 	expected_signature := "struct { uint32; int64; uint8 }"
-	encoder, err := binary.New(&myData)
+	encoder, err := raw.New(&myData)
 	if err != nil {
 		t.Fatalf("New() failed: %s", err)
 	}
