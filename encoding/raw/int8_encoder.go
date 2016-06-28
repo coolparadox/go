@@ -18,13 +18,13 @@ package raw
 
 import "io"
 
-type Int8Encoder struct{ store *int8 }
+type int8Encoder struct{ store *int8 }
 
-func (Int8Encoder) Signature() string {
+func (int8Encoder) Signature() string {
 	return "int8"
 }
 
-func (self Int8Encoder) Marshal(w io.Writer) (int, error) {
+func (self int8Encoder) Marshal(w io.Writer) (int, error) {
 	var aux uint8
 	if *self.store >= 0 {
 		aux = uint8(*self.store) + 1 + 0x7F
@@ -34,7 +34,7 @@ func (self Int8Encoder) Marshal(w io.Writer) (int, error) {
 	return marshalInteger(uint64(aux), 1, w)
 }
 
-func (self Int8Encoder) Unmarshal(r io.Reader) (int, error) {
+func (self int8Encoder) Unmarshal(r io.Reader) (int, error) {
 	value, n, err := unmarshalInteger(r, 1)
 	if err != nil {
 		return n, err

@@ -18,13 +18,13 @@ package raw
 
 import "io"
 
-type Int64Encoder struct{ store *int64 }
+type int64Encoder struct{ store *int64 }
 
-func (Int64Encoder) Signature() string {
+func (int64Encoder) Signature() string {
 	return "int64"
 }
 
-func (self Int64Encoder) Marshal(w io.Writer) (int, error) {
+func (self int64Encoder) Marshal(w io.Writer) (int, error) {
 	var aux uint64
 	if *self.store >= 0 {
 		aux = uint64(*self.store) + 1 + 0x7FFFFFFFFFFFFFFF
@@ -34,7 +34,7 @@ func (self Int64Encoder) Marshal(w io.Writer) (int, error) {
 	return marshalInteger(aux, 8, w)
 }
 
-func (self Int64Encoder) Unmarshal(r io.Reader) (int, error) {
+func (self int64Encoder) Unmarshal(r io.Reader) (int, error) {
 	value, n, err := unmarshalInteger(r, 8)
 	if err != nil {
 		return n, err

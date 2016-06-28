@@ -18,17 +18,17 @@ package raw
 
 import "io"
 
-type Uint32Encoder struct{ store *uint32 }
+type uint32Encoder struct{ store *uint32 }
 
-func (Uint32Encoder) Signature() string {
+func (uint32Encoder) Signature() string {
 	return "uint32"
 }
 
-func (self Uint32Encoder) Marshal(w io.Writer) (int, error) {
+func (self uint32Encoder) Marshal(w io.Writer) (int, error) {
 	return marshalInteger(uint64(*self.store), 4, w)
 }
 
-func (self Uint32Encoder) Unmarshal(r io.Reader) (int, error) {
+func (self uint32Encoder) Unmarshal(r io.Reader) (int, error) {
 	value, n, err := unmarshalInteger(r, 4)
 	if err != nil {
 		return n, err

@@ -18,9 +18,9 @@ package raw
 
 import "io"
 
-type StructEncoder struct{ store []Encoder }
+type structEncoder struct{ store []Encoder }
 
-func (self StructEncoder) Signature() string {
+func (self structEncoder) Signature() string {
 	ans := "struct {"
 	for i := 0; i < len(self.store); i++ {
 		if i > 0 {
@@ -32,7 +32,7 @@ func (self StructEncoder) Signature() string {
 	return ans
 }
 
-func (self StructEncoder) Marshal(w io.Writer) (int, error) {
+func (self structEncoder) Marshal(w io.Writer) (int, error) {
 	var count int
 	for i := 0; i < len(self.store); i++ {
 		n, err := self.store[i].Marshal(w)
@@ -44,7 +44,7 @@ func (self StructEncoder) Marshal(w io.Writer) (int, error) {
 	return count, nil
 }
 
-func (self StructEncoder) Unmarshal(r io.Reader) (int, error) {
+func (self structEncoder) Unmarshal(r io.Reader) (int, error) {
 	var count int
 	for i := 0; i < len(self.store); i++ {
 		n, err := self.store[i].Unmarshal(r)

@@ -18,17 +18,21 @@ package raw
 
 import "fmt"
 import "io"
+import "reflect"
 
-type SliceEncoder struct{ }
-
-func (self SliceEncoder) Signature() string {
-	return "not yet implemented"
+type sliceEncoder struct {
+	worker Encoder
+	store  reflect.Value
 }
 
-func (self SliceEncoder) Marshal(w io.Writer) (int, error) {
+func (self sliceEncoder) Signature() string {
+	return "[]" + self.worker.Signature()
+}
+
+func (self sliceEncoder) Marshal(w io.Writer) (int, error) {
 	return 0, fmt.Errorf("not yet implemented")
 }
 
-func (self SliceEncoder) Unmarshal(r io.Reader) (int, error) {
+func (self sliceEncoder) Unmarshal(r io.Reader) (int, error) {
 	return 0, fmt.Errorf("not yet implemented")
 }

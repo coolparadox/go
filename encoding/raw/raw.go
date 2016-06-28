@@ -44,21 +44,21 @@ func MakeEncoder(v reflect.Value) (Encoder, error) {
 	default:
 		return nil, fmt.Errorf("unsupported data type: %s", k)
 	case reflect.Uint8:
-		return Uint8Encoder{v.Interface().(*uint8)}, nil
+		return uint8Encoder{v.Interface().(*uint8)}, nil
 	case reflect.Uint16:
-		return Uint16Encoder{v.Interface().(*uint16)}, nil
+		return uint16Encoder{v.Interface().(*uint16)}, nil
 	case reflect.Uint32:
-		return Uint32Encoder{v.Interface().(*uint32)}, nil
+		return uint32Encoder{v.Interface().(*uint32)}, nil
 	case reflect.Uint64:
-		return Uint64Encoder{v.Interface().(*uint64)}, nil
+		return uint64Encoder{v.Interface().(*uint64)}, nil
 	case reflect.Int8:
-		return Int8Encoder{v.Interface().(*int8)}, nil
+		return int8Encoder{v.Interface().(*int8)}, nil
 	case reflect.Int16:
-		return Int16Encoder{v.Interface().(*int16)}, nil
+		return int16Encoder{v.Interface().(*int16)}, nil
 	case reflect.Int32:
-		return Int32Encoder{v.Interface().(*int32)}, nil
+		return int32Encoder{v.Interface().(*int32)}, nil
 	case reflect.Int64:
-		return Int64Encoder{v.Interface().(*int64)}, nil
+		return int64Encoder{v.Interface().(*int64)}, nil
 	case reflect.Struct:
 		v = v.Elem()
 		n := v.NumField()
@@ -73,8 +73,12 @@ func MakeEncoder(v reflect.Value) (Encoder, error) {
 				return nil, fmt.Errorf("cannot make encoder for struct field %s: %s", v.Type().Field(i).Name, err)
 			}
 		}
-		return StructEncoder{store}, nil
+		return structEncoder{store}, nil
 	case reflect.Slice:
-		return SliceEncoder{}, nil
+		worker, err := MakeEncoder(reflect.New(v.Type().Elem().Elem()))
+		if err != nil {
+			return nil, fmt.Errorf("cannot make encoder for slice: %s", err)
+		}
+		return sliceEncoder{worker: worker, store: v}, nil
 	}
 }
