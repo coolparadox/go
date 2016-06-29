@@ -16,7 +16,6 @@
 
 package raw
 
-import "fmt"
 import "io"
 import "reflect"
 
@@ -32,17 +31,16 @@ func (self sliceEncoder) Signature() string {
 
 func (self sliceEncoder) Marshal(w io.Writer) (int, error) {
 	var nc int
-	s := self.store.Elem()
-	sl := s.Len()
-	n, err := marshalInteger(uint64(sl), 4, w)
+	storeVal := self.store.Elem()
+	storeLen := storeVal.Len()
+	n, err := marshalInteger(uint64(storeLen), 4, w)
 	nc += n
 	if err != nil {
 		return nc, err
 	}
-	wk := self.workerStore.Elem()
-	for i := 0; i < sl; i++ {
-		e := s.Index(i)
-		wk.Set(e)
+	workerVal := self.workerStore.Elem()
+	for i := 0; i < storeLen; i++ {
+		workerVal.Set(storeVal.Index(i))
 		n, err := self.worker.Marshal(w)
 		nc += n
 		if err != nil {
@@ -53,5 +51,23 @@ func (self sliceEncoder) Marshal(w io.Writer) (int, error) {
 }
 
 func (self sliceEncoder) Unmarshal(r io.Reader) (int, error) {
-	return 0, fmt.Errorf("not yet implemented")
+	var nc int
+	v, n, err := unmarshalInteger(r, 4)
+	nc += n
+	if err != nil {
+		return nc, err
+	}
+	storeLen := int(v)
+	storeVal := reflect.MakeSlice(self.store.Elem().Type(), storeLen, storeLen)
+	self.store.Elem().Set(storeVal)
+	workerVal := self.workerStore.Elem()
+	for i := 0; i < storeLen; i++ {
+		n, err := self.worker.Unmarshal(r)
+		nc += n
+		if err != nil {
+			return nc, err
+		}
+		storeVal.Index(i).Set(workerVal)
+	}
+	return nc, nil
 }
