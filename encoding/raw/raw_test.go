@@ -376,7 +376,7 @@ func TestStructEncoder(t *testing.T) {
 }
 
 func TestSliceEncoder(t *testing.T) {
-	n := int(random_uint8())
+	n := int(random_uint8()%10 + 1)
 	myData := make([]uint32, n, n)
 	expected_signature := "[]uint32"
 	encoder, err := raw.New(&myData)

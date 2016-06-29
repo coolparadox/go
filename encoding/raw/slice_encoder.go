@@ -21,8 +21,9 @@ import "io"
 import "reflect"
 
 type sliceEncoder struct {
-	worker Encoder
-	store  reflect.Value
+	store       reflect.Value
+	worker      Encoder
+	workerStore reflect.Value
 }
 
 func (self sliceEncoder) Signature() string {
@@ -30,7 +31,25 @@ func (self sliceEncoder) Signature() string {
 }
 
 func (self sliceEncoder) Marshal(w io.Writer) (int, error) {
-	return 0, fmt.Errorf("not yet implemented")
+	var nc int
+	s := self.store.Elem()
+	sl := s.Len()
+	n, err := marshalInteger(uint64(sl), 4, w)
+	nc += n
+	if err != nil {
+		return nc, err
+	}
+	wk := self.workerStore.Elem()
+	for i := 0; i < sl; i++ {
+		e := s.Index(i)
+		wk.Set(e)
+		n, err := self.worker.Marshal(w)
+		nc += n
+		if err != nil {
+			return nc, err
+		}
+	}
+	return nc, nil
 }
 
 func (self sliceEncoder) Unmarshal(r io.Reader) (int, error) {

@@ -75,10 +75,11 @@ func MakeEncoder(v reflect.Value) (Encoder, error) {
 		}
 		return structEncoder{store}, nil
 	case reflect.Slice:
-		worker, err := MakeEncoder(reflect.New(v.Type().Elem().Elem()))
+		workerStore := reflect.New(v.Type().Elem().Elem())
+		worker, err := MakeEncoder(workerStore)
 		if err != nil {
 			return nil, fmt.Errorf("cannot make encoder for slice: %s", err)
 		}
-		return sliceEncoder{worker: worker, store: v}, nil
+		return sliceEncoder{worker: worker, workerStore: workerStore, store: v}, nil
 	}
 }
