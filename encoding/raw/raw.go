@@ -81,5 +81,17 @@ func MakeEncoder(v reflect.Value) (Encoder, error) {
 			return nil, fmt.Errorf("cannot make encoder for slice: %s", err)
 		}
 		return sliceEncoder{worker: worker, workerStore: workerStore, store: v}, nil
+	case reflect.Map:
+		kws := reflect.New(v.Type().Elem().Key())
+		kw, err := MakeEncoder(kws)
+		if err != nil {
+			return nil, fmt.Errorf("cannot make encoder for map: %s", err)
+		}
+		ews := reflect.New(v.Type().Elem().Elem())
+		ew, err := MakeEncoder(ews)
+		if err != nil {
+			return nil, fmt.Errorf("cannot make encoder for map: %s", err)
+		}
+		return mapEncoder{keyWorker: kw, keyWorkerStore: kws, elemWorker: ew, elemWorkerStore: ews, store: v}, nil
 	}
 }
