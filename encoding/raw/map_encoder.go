@@ -29,12 +29,10 @@ type mapEncoder struct {
 }
 
 func (self mapEncoder) Signature() string {
-	//return "[]" + self.worker.Signature()
-	return "not yet implemented"
+	return "map[" + self.keyWorker.Signature() + "]" + self.elemWorker.Signature()
 }
 
 func (self mapEncoder) Marshal(w io.Writer) (int, error) {
-	/*
 	var nc int
 	storeVal := self.store.Elem()
 	storeLen := storeVal.Len()
@@ -43,18 +41,24 @@ func (self mapEncoder) Marshal(w io.Writer) (int, error) {
 	if err != nil {
 		return nc, err
 	}
-	workerVal := self.workerStore.Elem()
-	for i := 0; i < storeLen; i++ {
-		workerVal.Set(storeVal.Index(i))
-		n, err := self.worker.Marshal(w)
+	keyWorkerVal := self.keyWorkerStore.Elem()
+	elemWorkerVal := self.elemWorkerStore.Elem()
+	keys := storeVal.MapKeys()
+	for _, keyVal := range keys {
+		keyWorkerVal.Set(keyVal)
+		n, err := self.keyWorker.Marshal(w)
+		nc += n
+		if err != nil {
+			return nc, err
+		}
+		elemWorkerVal.Set(storeVal.MapIndex(keyVal))
+		n, err = self.elemWorker.Marshal(w)
 		nc += n
 		if err != nil {
 			return nc, err
 		}
 	}
 	return nc, nil
-	*/
-	return 0, fmt.Errorf("not yet implemented")
 }
 
 func (self mapEncoder) Unmarshal(r io.Reader) (int, error) {
@@ -68,14 +72,14 @@ func (self mapEncoder) Unmarshal(r io.Reader) (int, error) {
 	storeLen := int(v)
 	storeVal := reflect.MakeSlice(self.store.Elem().Type(), storeLen, storeLen)
 	self.store.Elem().Set(storeVal)
-	workerVal := self.workerStore.Elem()
+	keyWorkerVal := self.keyWorkerStore.Elem()
 	for i := 0; i < storeLen; i++ {
 		n, err := self.worker.Unmarshal(r)
 		nc += n
 		if err != nil {
 			return nc, err
 		}
-		storeVal.Index(i).Set(workerVal)
+		storeVal.Index(i).Set(keyWorkerVal)
 	}
 	return nc, nil
 	*/
