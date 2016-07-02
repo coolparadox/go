@@ -20,6 +20,7 @@ import "bytes"
 import "time"
 import "math/rand"
 import "reflect"
+import "strconv"
 import "testing"
 import "github.com/coolparadox/go/encoding/raw"
 
@@ -442,3 +443,38 @@ func TestMapEncoder(t *testing.T) {
 		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
 	}
 }
+
+func TestArrayEncoder(t *testing.T) {
+	const alen = 5
+	var myData [alen]uint32
+	expected_signature := "[" + strconv.Itoa(alen) + "]uint32"
+	encoder, err := raw.New(&myData)
+	if err != nil {
+		t.Fatalf("New() failed: %s", err)
+	}
+	signature := encoder.Signature()
+	if signature != expected_signature {
+		t.Fatalf("signature mismatch: expected '%s', received '%s'", expected_signature, signature)
+	}
+	t.Logf("myData type signature = %s", signature)
+	for i := 0; i < alen; i++ {
+		myData[i] = random_uint32()
+	}
+	var b bytes.Buffer
+	_, err = encoder.Marshal(&b)
+	if err != nil {
+		t.Fatalf("Marshal() failed: %s", err)
+	}
+	t.Logf("marshal %v --> %v", myData, b.Bytes())
+	myData2 := myData
+	myData = reflect.Zero(reflect.TypeOf(myData)).Interface().([alen]uint32)
+	n, err := encoder.Unmarshal(&b)
+	if err != nil {
+		t.Fatalf("Unmarshal() failed: %s", err)
+	}
+	t.Logf("unmarshal %v bytes --> %v", n, myData)
+	if !reflect.DeepEqual(myData, myData2) {
+		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
+	}
+}
+
