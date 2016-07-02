@@ -16,14 +16,13 @@
 
 package raw
 
-import "fmt"
 import "io"
 import "reflect"
 
 type mapEncoder struct {
-	store       reflect.Value
-	keyWorker      Encoder
-	keyWorkerStore reflect.Value
+	store           reflect.Value
+	keyWorker       Encoder
+	keyWorkerStore  reflect.Value
 	elemWorker      Encoder
 	elemWorkerStore reflect.Value
 }
@@ -62,7 +61,6 @@ func (self mapEncoder) Marshal(w io.Writer) (int, error) {
 }
 
 func (self mapEncoder) Unmarshal(r io.Reader) (int, error) {
-	/*
 	var nc int
 	v, n, err := unmarshalInteger(r, 4)
 	nc += n
@@ -70,18 +68,22 @@ func (self mapEncoder) Unmarshal(r io.Reader) (int, error) {
 		return nc, err
 	}
 	storeLen := int(v)
-	storeVal := reflect.MakeSlice(self.store.Elem().Type(), storeLen, storeLen)
+	storeVal := reflect.MakeMap(self.store.Elem().Type())
 	self.store.Elem().Set(storeVal)
 	keyWorkerVal := self.keyWorkerStore.Elem()
+	elemWorkerVal := self.elemWorkerStore.Elem()
 	for i := 0; i < storeLen; i++ {
-		n, err := self.worker.Unmarshal(r)
+		n, err := self.keyWorker.Unmarshal(r)
 		nc += n
 		if err != nil {
 			return nc, err
 		}
-		storeVal.Index(i).Set(keyWorkerVal)
+		n, err = self.elemWorker.Unmarshal(r)
+		nc += n
+		if err != nil {
+			return nc, err
+		}
+		storeVal.SetMapIndex(keyWorkerVal, elemWorkerVal)
 	}
 	return nc, nil
-	*/
-	return 0, fmt.Errorf("not yet implemented")
 }
