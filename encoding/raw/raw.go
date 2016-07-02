@@ -93,5 +93,7 @@ func MakeEncoder(v reflect.Value) (Encoder, error) {
 			return nil, fmt.Errorf("cannot make encoder for map: %s", err)
 		}
 		return mapEncoder{keyWorker: kw, keyWorkerStore: kws, elemWorker: ew, elemWorkerStore: ews, store: v}, nil
+	case reflect.Array:
+		return arrayEncoder{}, nil
 	}
 }
