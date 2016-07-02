@@ -32,15 +32,9 @@ func (self arrayEncoder) Signature() string {
 }
 
 func (self arrayEncoder) Marshal(w io.Writer) (int, error) {
-	/*
 	var nc int
 	storeVal := self.store.Elem()
 	storeLen := storeVal.Len()
-	n, err := marshalInteger(uint64(storeLen), 4, w)
-	nc += n
-	if err != nil {
-		return nc, err
-	}
 	workerVal := self.workerStore.Elem()
 	for i := 0; i < storeLen; i++ {
 		workerVal.Set(storeVal.Index(i))
@@ -51,8 +45,6 @@ func (self arrayEncoder) Marshal(w io.Writer) (int, error) {
 		}
 	}
 	return nc, nil
-	*/
-	return 0, fmt.Errorf("not yet implemented")
 }
 
 func (self arrayEncoder) Unmarshal(r io.Reader) (int, error) {
