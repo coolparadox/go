@@ -16,7 +16,6 @@
 
 package raw
 
-import "fmt"
 import "io"
 import "reflect"
 import "strconv"
@@ -48,16 +47,9 @@ func (self arrayEncoder) Marshal(w io.Writer) (int, error) {
 }
 
 func (self arrayEncoder) Unmarshal(r io.Reader) (int, error) {
-	/*
 	var nc int
-	v, n, err := unmarshalInteger(r, 4)
-	nc += n
-	if err != nil {
-		return nc, err
-	}
-	storeLen := int(v)
-	storeVal := reflect.MakeSlice(self.store.Elem().Type(), storeLen, storeLen)
-	self.store.Elem().Set(storeVal)
+	storeVal := self.store.Elem()
+	storeLen := storeVal.Len()
 	workerVal := self.workerStore.Elem()
 	for i := 0; i < storeLen; i++ {
 		n, err := self.worker.Unmarshal(r)
@@ -68,6 +60,4 @@ func (self arrayEncoder) Unmarshal(r io.Reader) (int, error) {
 		storeVal.Index(i).Set(workerVal)
 	}
 	return nc, nil
-	*/
-	return 0, fmt.Errorf("not yet implemented")
 }
