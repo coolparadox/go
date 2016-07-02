@@ -75,12 +75,12 @@ func MakeEncoder(v reflect.Value) (Encoder, error) {
 		}
 		return structEncoder{store}, nil
 	case reflect.Slice:
-		workerStore := reflect.New(v.Type().Elem().Elem())
-		worker, err := MakeEncoder(workerStore)
+		ws := reflect.New(v.Type().Elem().Elem())
+		w, err := MakeEncoder(ws)
 		if err != nil {
 			return nil, fmt.Errorf("cannot make encoder for slice: %s", err)
 		}
-		return sliceEncoder{worker: worker, workerStore: workerStore, store: v}, nil
+		return sliceEncoder{worker: w, workerStore: ws, store: v}, nil
 	case reflect.Map:
 		kws := reflect.New(v.Type().Elem().Key())
 		kw, err := MakeEncoder(kws)
@@ -94,6 +94,11 @@ func MakeEncoder(v reflect.Value) (Encoder, error) {
 		}
 		return mapEncoder{keyWorker: kw, keyWorkerStore: kws, elemWorker: ew, elemWorkerStore: ews, store: v}, nil
 	case reflect.Array:
-		return arrayEncoder{}, nil
+		ws := reflect.New(v.Type().Elem().Elem())
+		w, err := MakeEncoder(ws)
+		if err != nil {
+			return nil, fmt.Errorf("cannot make encoder for array: %s", err)
+		}
+		return arrayEncoder{worker: w, workerStore: ws, store: v}, nil
 	}
 }

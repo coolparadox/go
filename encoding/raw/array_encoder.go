@@ -18,17 +18,17 @@ package raw
 
 import "fmt"
 import "io"
-//import "reflect"
+import "reflect"
+import "strconv"
 
 type arrayEncoder struct {
-	//store       reflect.Value
-	//worker      Encoder
-	//workerStore reflect.Value
+	worker      Encoder
+	workerStore reflect.Value
+	store       reflect.Value
 }
 
 func (self arrayEncoder) Signature() string {
-	//return "[]" + self.worker.Signature()
-	return "not yet implemented"
+	return "[" + strconv.Itoa(self.store.Elem().Len()) + "]" + self.worker.Signature()
 }
 
 func (self arrayEncoder) Marshal(w io.Writer) (int, error) {
