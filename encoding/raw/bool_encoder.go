@@ -26,8 +26,11 @@ func (boolEncoder) Signature() string {
 }
 
 func (self boolEncoder) Marshal(w io.Writer) (int, error) {
-	//return marshalInteger(uint64(*self.store), 1, w)
-	return 0, fmt.Errorf("not yet implemented")
+	var answer uint8
+	if *self.store {
+		answer = 0xFF
+	}
+	return marshalInteger(uint64(answer), 1, w)
 }
 
 func (self boolEncoder) Unmarshal(r io.Reader) (int, error) {
