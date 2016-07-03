@@ -102,5 +102,7 @@ func MakeEncoder(v reflect.Value) (Encoder, error) {
 		return arrayEncoder{worker: w, workerStore: ws, store: v}, nil
 	case reflect.String:
 		return stringEncoder{v.Interface().(*string)}, nil
+	case reflect.Bool:
+		return boolEncoder{v.Interface().(*bool)}, nil
 	}
 }
