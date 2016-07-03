@@ -22,8 +22,7 @@ import "io"
 type boolEncoder struct{ store *bool }
 
 func (boolEncoder) Signature() string {
-	//return "uint8"
-	return "not yet implemented"
+	return "bool"
 }
 
 func (self boolEncoder) Marshal(w io.Writer) (int, error) {
