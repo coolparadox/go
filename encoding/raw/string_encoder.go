@@ -16,7 +16,6 @@
 
 package raw
 
-import "fmt"
 import "io"
 
 type stringEncoder struct{ store *string }
@@ -44,5 +43,22 @@ func (self stringEncoder) Marshal(w io.Writer) (int, error) {
 }
 
 func (self stringEncoder) Unmarshal(r io.Reader) (int, error) {
-	return 0, fmt.Errorf("not yet implemented")
+	var nc int
+	v, n, err := unmarshalInteger(r, 4)
+	nc += n
+	if err != nil {
+		return nc, err
+	}
+	storeLen := int(v)
+	answer := make([]byte, storeLen, storeLen)
+	for i := 0; i < storeLen; i++ {
+		v, n, err := unmarshalInteger(r, 1)
+		nc += n
+		if err != nil {
+			return nc, err
+		}
+		answer[i] = uint8(v)
+	}
+	*self.store = string(answer)
+	return nc, nil
 }
