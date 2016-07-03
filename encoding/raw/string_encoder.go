@@ -22,7 +22,7 @@ import "io"
 type stringEncoder struct{ store *string }
 
 func (stringEncoder) Signature() string {
-	return "not yet implemented"
+	return "string"
 }
 
 func (self stringEncoder) Marshal(w io.Writer) (int, error) {
