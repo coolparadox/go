@@ -497,8 +497,8 @@ func TestStringEncoder(t *testing.T) {
 	}
 	t.Logf("marshal %v --> %v", myData, b.Bytes())
 	myData2 := myData
-	myData = nil
-	n, err = encoder.Unmarshal(&b)
+	myData = ""
+	n, err := encoder.Unmarshal(&b)
 	if err != nil {
 		t.Fatalf("Unmarshal() failed: %s", err)
 	}
@@ -507,4 +507,3 @@ func TestStringEncoder(t *testing.T) {
 		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
 	}
 }
-
