@@ -100,5 +100,7 @@ func MakeEncoder(v reflect.Value) (Encoder, error) {
 			return nil, fmt.Errorf("cannot make encoder for array: %s", err)
 		}
 		return arrayEncoder{worker: w, workerStore: ws, store: v}, nil
+	case reflect.String:
+		return stringEncoder{v.Interface().(*string)}, nil
 	}
 }
