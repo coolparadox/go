@@ -507,3 +507,33 @@ func TestStringEncoder(t *testing.T) {
 		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
 	}
 }
+
+func TestBoolEncoder(t *testing.T) {
+	myData := true
+	expected_signature := "bool"
+	encoder, err := raw.New(&myData)
+	if err != nil {
+		t.Fatalf("New() failed: %s", err)
+	}
+	signature := encoder.Signature()
+	if signature != expected_signature {
+		t.Fatalf("signature mismatch: expected '%s', received '%s'", expected_signature, signature)
+	}
+	t.Logf("myData type signature = %s", signature)
+	var b bytes.Buffer
+	_, err = encoder.Marshal(&b)
+	if err != nil {
+		t.Fatalf("Marshal() failed: %s", err)
+	}
+	t.Logf("marshal %v --> %v", myData, b.Bytes())
+	myData2 := myData
+	myData = !myData
+	n, err := encoder.Unmarshal(&b)
+	if err != nil {
+		t.Fatalf("Unmarshal() failed: %s", err)
+	}
+	t.Logf("unmarshal %v bytes --> %v", n, myData)
+	if !reflect.DeepEqual(myData, myData2) {
+		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
+	}
+}
