@@ -16,7 +16,6 @@
 
 package raw
 
-import "fmt"
 import "io"
 
 type boolEncoder struct{ store *bool }
@@ -34,13 +33,10 @@ func (self boolEncoder) Marshal(w io.Writer) (int, error) {
 }
 
 func (self boolEncoder) Unmarshal(r io.Reader) (int, error) {
-	/*
 	value, n, err := unmarshalInteger(r, 1)
 	if err != nil {
 		return n, err
 	}
-	*self.store = bool(value)
+	*self.store = value != 0
 	return n, nil
-	*/
-	return 0, fmt.Errorf("not yet implemented")
 }
