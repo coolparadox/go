@@ -26,7 +26,21 @@ func (stringEncoder) Signature() string {
 }
 
 func (self stringEncoder) Marshal(w io.Writer) (int, error) {
-	return 0, fmt.Errorf("not yet implemented")
+	var nc int
+	storeLen := len(*self.store)
+	n, err := marshalInteger(uint64(storeLen), 4, w)
+	nc += n
+	if err != nil {
+		return nc, err
+	}
+	for i := 0; i < storeLen; i++ {
+		n, err := marshalInteger(uint64((*self.store)[i]), 1, w)
+		nc += n
+		if err != nil {
+			return nc, err
+		}
+	}
+	return nc, nil
 }
 
 func (self stringEncoder) Unmarshal(r io.Reader) (int, error) {
