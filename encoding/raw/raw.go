@@ -59,6 +59,12 @@ func MakeEncoder(v reflect.Value) (Encoder, error) {
 		return int32Encoder{v.Interface().(*int32)}, nil
 	case reflect.Int64:
 		return int64Encoder{v.Interface().(*int64)}, nil
+	case reflect.String:
+		return stringEncoder{v.Interface().(*string)}, nil
+	case reflect.Bool:
+		return boolEncoder{v.Interface().(*bool)}, nil
+	case reflect.Float32:
+		return float32Encoder{v.Interface().(*float32)}, nil
 	case reflect.Struct:
 		v = v.Elem()
 		n := v.NumField()
@@ -100,9 +106,5 @@ func MakeEncoder(v reflect.Value) (Encoder, error) {
 			return nil, fmt.Errorf("cannot make encoder for array: %s", err)
 		}
 		return arrayEncoder{worker: w, workerStore: ws, store: v}, nil
-	case reflect.String:
-		return stringEncoder{v.Interface().(*string)}, nil
-	case reflect.Bool:
-		return boolEncoder{v.Interface().(*bool)}, nil
 	}
 }
