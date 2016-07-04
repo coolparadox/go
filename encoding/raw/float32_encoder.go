@@ -22,8 +22,7 @@ import "io"
 type float32Encoder struct{ store *float32 }
 
 func (float32Encoder) Signature() string {
-	//return "float32"
-	return "not yet implemented"
+	return "float32"
 }
 
 func (self float32Encoder) Marshal(w io.Writer) (int, error) {

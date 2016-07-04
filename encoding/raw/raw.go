@@ -65,21 +65,13 @@ func MakeEncoder(v reflect.Value) (Encoder, error) {
 		return boolEncoder{v.Interface().(*bool)}, nil
 	case reflect.Float32:
 		return float32Encoder{v.Interface().(*float32)}, nil
-	case reflect.Struct:
-		v = v.Elem()
-		n := v.NumField()
-		store := make([]Encoder, n, n)
-		for i := 0; i < n; i++ {
-			f := v.Type().Field(i)
-			if f.PkgPath != "" {
-				return nil, fmt.Errorf("struct field '%s' is unexported", f.Name)
-			}
-			store[i], err = MakeEncoder(v.Field(i).Addr())
-			if err != nil {
-				return nil, fmt.Errorf("cannot make encoder for struct field %s: %s", v.Type().Field(i).Name, err)
-			}
+	case reflect.Array:
+		ws := reflect.New(v.Type().Elem().Elem())
+		w, err := MakeEncoder(ws)
+		if err != nil {
+			return nil, fmt.Errorf("cannot make encoder for array: %s", err)
 		}
-		return structEncoder{store}, nil
+		return arrayEncoder{worker: w, workerStore: ws, store: v}, nil
 	case reflect.Slice:
 		ws := reflect.New(v.Type().Elem().Elem())
 		w, err := MakeEncoder(ws)
@@ -99,12 +91,20 @@ func MakeEncoder(v reflect.Value) (Encoder, error) {
 			return nil, fmt.Errorf("cannot make encoder for map: %s", err)
 		}
 		return mapEncoder{keyWorker: kw, keyWorkerStore: kws, elemWorker: ew, elemWorkerStore: ews, store: v}, nil
-	case reflect.Array:
-		ws := reflect.New(v.Type().Elem().Elem())
-		w, err := MakeEncoder(ws)
-		if err != nil {
-			return nil, fmt.Errorf("cannot make encoder for array: %s", err)
+	case reflect.Struct:
+		v = v.Elem()
+		n := v.NumField()
+		store := make([]Encoder, n, n)
+		for i := 0; i < n; i++ {
+			f := v.Type().Field(i)
+			if f.PkgPath != "" {
+				return nil, fmt.Errorf("struct field '%s' is unexported", f.Name)
+			}
+			store[i], err = MakeEncoder(v.Field(i).Addr())
+			if err != nil {
+				return nil, fmt.Errorf("cannot make encoder for struct field %s: %s", v.Type().Field(i).Name, err)
+			}
 		}
-		return arrayEncoder{worker: w, workerStore: ws, store: v}, nil
+		return structEncoder{store}, nil
 	}
 }
