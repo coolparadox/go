@@ -80,6 +80,14 @@ func random_int64() int64 {
 	}
 }
 
+func random_float32() float32 {
+	return (rand.Float32() - rand.Float32()) / rand.Float32()
+}
+
+func random_float64() float64 {
+	return (rand.Float64() - rand.Float64()) / rand.Float64()
+}
+
 func TestUint8Encoder(t *testing.T) {
 	var myData uint8
 	expected_signature := "uint8"
@@ -551,7 +559,7 @@ func TestFloat32Encoder(t *testing.T) {
 	}
 	t.Logf("myData type signature = %s", signature)
 	var b bytes.Buffer
-	myData = (rand.Float32() - rand.Float32()) / rand.Float32()
+	myData = random_float32()
 	_, err = encoder.Marshal(&b)
 	if err != nil {
 		t.Fatalf("Marshal() failed: %s", err)
@@ -583,7 +591,39 @@ func TestFloat64Encoder(t *testing.T) {
 	}
 	t.Logf("myData type signature = %s", signature)
 	var b bytes.Buffer
-	myData = (rand.Float64() - rand.Float64()) / rand.Float64()
+	myData = random_float64()
+	_, err = encoder.Marshal(&b)
+	if err != nil {
+		t.Fatalf("Marshal() failed: %s", err)
+	}
+	t.Logf("marshal %v --> %v", myData, b.Bytes())
+	myData2 := myData
+	myData = 0
+	var n int
+	n, err = encoder.Unmarshal(&b)
+	if err != nil {
+		t.Fatalf("Unmarshal() failed: %s", err)
+	}
+	t.Logf("unmarshal %v bytes --> %v", n, myData)
+	if !reflect.DeepEqual(myData, myData2) {
+		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
+	}
+}
+
+func TestComplex64Encoder(t *testing.T) {
+	var myData complex64
+	expected_signature := "complex64"
+	encoder, err := raw.New(&myData)
+	if err != nil {
+		t.Fatalf("New() failed: %s", err)
+	}
+	signature := encoder.Signature()
+	if signature != expected_signature {
+		t.Fatalf("signature mismatch: expected '%s', received '%s'", expected_signature, signature)
+	}
+	t.Logf("myData type signature = %s", signature)
+	var b bytes.Buffer
+	myData = complex(random_float32(), random_float32())
 	_, err = encoder.Marshal(&b)
 	if err != nil {
 		t.Fatalf("Marshal() failed: %s", err)
