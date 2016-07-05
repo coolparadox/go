@@ -16,7 +16,6 @@
 
 package raw
 
-import "fmt"
 import "math"
 import "io"
 
@@ -31,13 +30,10 @@ func (self float32Encoder) Marshal(w io.Writer) (int, error) {
 }
 
 func (self float32Encoder) Unmarshal(r io.Reader) (int, error) {
-	/*
 	value, n, err := unmarshalInteger(r, 4)
 	if err != nil {
 		return n, err
 	}
-	*self.store = uint32(value)
+	*self.store = math.Float32frombits(uint32(value))
 	return n, nil
-	*/
-	return 0, fmt.Errorf("not yet implemented")
 }
