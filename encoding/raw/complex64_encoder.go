@@ -16,7 +16,6 @@
 
 package raw
 
-import "fmt"
 import "math"
 import "io"
 
@@ -39,13 +38,17 @@ func (self complex64Encoder) Marshal(w io.Writer) (int, error) {
 }
 
 func (self complex64Encoder) Unmarshal(r io.Reader) (int, error) {
-	/*
-	value, n, err := unmarshalInteger(r, 8)
+	var nc int
+	vr, n, err := unmarshalInteger(r, 4)
+	nc += n
 	if err != nil {
-		return n, err
+		return nc, err
 	}
-	*self.store = math.Float64frombits(value)
-	return n, nil
-	*/
-	return 0, fmt.Errorf("not yet implemented")
+	vi, n, err := unmarshalInteger(r, 4)
+	nc += n
+	if err != nil {
+		return nc, err
+	}
+	*self.store = complex(math.Float32frombits(uint32(vr)), math.Float32frombits(uint32(vi)))
+	return nc, nil
 }
