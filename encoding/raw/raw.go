@@ -63,6 +63,8 @@ func MakeEncoder(v reflect.Value) (Encoder, error) {
 		return float32Encoder{v.Interface().(*float32)}, nil
 	case reflect.Float64:
 		return float64Encoder{v.Interface().(*float64)}, nil
+	case reflect.Complex64:
+		return complex64Encoder{v.Interface().(*complex64)}, nil
 	case reflect.Bool:
 		return boolEncoder{v.Interface().(*bool)}, nil
 	case reflect.String:
