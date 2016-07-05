@@ -17,7 +17,7 @@
 package raw
 
 import "fmt"
-//import "math"
+import "math"
 import "io"
 
 type complex64Encoder struct{ store *complex64 }
@@ -27,8 +27,15 @@ func (complex64Encoder) Signature() string {
 }
 
 func (self complex64Encoder) Marshal(w io.Writer) (int, error) {
-	//return marshalInteger(uint64(math.Float64bits(*self.store)), 8, w)
-	return 0, fmt.Errorf("not yet implemented")
+	var nc int
+	n, err := marshalInteger(uint64(math.Float32bits(real(*self.store))), 4, w)
+	nc += n
+	if err != nil {
+		return nc, err
+	}
+	n, err = marshalInteger(uint64(math.Float32bits(imag(*self.store))), 4, w)
+	nc += n
+	return nc, err
 }
 
 func (self complex64Encoder) Unmarshal(r io.Reader) (int, error) {

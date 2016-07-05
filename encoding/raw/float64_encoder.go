@@ -26,7 +26,7 @@ func (float64Encoder) Signature() string {
 }
 
 func (self float64Encoder) Marshal(w io.Writer) (int, error) {
-	return marshalInteger(uint64(math.Float64bits(*self.store)), 8, w)
+	return marshalInteger(math.Float64bits(*self.store), 8, w)
 }
 
 func (self float64Encoder) Unmarshal(r io.Reader) (int, error) {
