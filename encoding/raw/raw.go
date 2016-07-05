@@ -31,10 +31,10 @@ type Encoder interface {
 }
 
 func New(data interface{}) (Encoder, error) {
-	return MakeEncoder(reflect.ValueOf(data))
+	return makeEncoder(reflect.ValueOf(data))
 }
 
-func MakeEncoder(v reflect.Value) (Encoder, error) {
+func makeEncoder(v reflect.Value) (Encoder, error) {
 	var err error
 	if v.Kind() != reflect.Ptr {
 		return nil, fmt.Errorf("storage variable must be passed by reference")
@@ -73,26 +73,26 @@ func MakeEncoder(v reflect.Value) (Encoder, error) {
 		return stringEncoder{v.Interface().(*string)}, nil
 	case reflect.Array:
 		ws := reflect.New(v.Type().Elem().Elem())
-		w, err := MakeEncoder(ws)
+		w, err := makeEncoder(ws)
 		if err != nil {
 			return nil, fmt.Errorf("cannot make encoder for array: %s", err)
 		}
 		return arrayEncoder{worker: w, workerStore: ws, store: v}, nil
 	case reflect.Slice:
 		ws := reflect.New(v.Type().Elem().Elem())
-		w, err := MakeEncoder(ws)
+		w, err := makeEncoder(ws)
 		if err != nil {
 			return nil, fmt.Errorf("cannot make encoder for slice: %s", err)
 		}
 		return sliceEncoder{worker: w, workerStore: ws, store: v}, nil
 	case reflect.Map:
 		kws := reflect.New(v.Type().Elem().Key())
-		kw, err := MakeEncoder(kws)
+		kw, err := makeEncoder(kws)
 		if err != nil {
 			return nil, fmt.Errorf("cannot make encoder for map: %s", err)
 		}
 		ews := reflect.New(v.Type().Elem().Elem())
-		ew, err := MakeEncoder(ews)
+		ew, err := makeEncoder(ews)
 		if err != nil {
 			return nil, fmt.Errorf("cannot make encoder for map: %s", err)
 		}
@@ -106,7 +106,7 @@ func MakeEncoder(v reflect.Value) (Encoder, error) {
 			if f.PkgPath != "" {
 				return nil, fmt.Errorf("struct field '%s' is unexported", f.Name)
 			}
-			store[i], err = MakeEncoder(v.Field(i).Addr())
+			store[i], err = makeEncoder(v.Field(i).Addr())
 			if err != nil {
 				return nil, fmt.Errorf("cannot make encoder for struct field %s: %s", v.Type().Field(i).Name, err)
 			}
