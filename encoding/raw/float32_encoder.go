@@ -17,6 +17,7 @@
 package raw
 
 import "fmt"
+import "math"
 import "io"
 
 type float32Encoder struct{ store *float32 }
@@ -26,8 +27,7 @@ func (float32Encoder) Signature() string {
 }
 
 func (self float32Encoder) Marshal(w io.Writer) (int, error) {
-	//return marshalInteger(uint64(*self.store), 4, w)
-	return 0, fmt.Errorf("not yet implemented")
+	return marshalInteger(uint64(math.Float32bits(*self.store)), 4, w)
 }
 
 func (self float32Encoder) Unmarshal(r io.Reader) (int, error) {
