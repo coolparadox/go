@@ -59,12 +59,14 @@ func MakeEncoder(v reflect.Value) (Encoder, error) {
 		return int32Encoder{v.Interface().(*int32)}, nil
 	case reflect.Int64:
 		return int64Encoder{v.Interface().(*int64)}, nil
-	case reflect.String:
-		return stringEncoder{v.Interface().(*string)}, nil
-	case reflect.Bool:
-		return boolEncoder{v.Interface().(*bool)}, nil
 	case reflect.Float32:
 		return float32Encoder{v.Interface().(*float32)}, nil
+	case reflect.Float64:
+		return float64Encoder{v.Interface().(*float64)}, nil
+	case reflect.Bool:
+		return boolEncoder{v.Interface().(*bool)}, nil
+	case reflect.String:
+		return stringEncoder{v.Interface().(*string)}, nil
 	case reflect.Array:
 		ws := reflect.New(v.Type().Elem().Elem())
 		w, err := MakeEncoder(ws)
