@@ -23,7 +23,7 @@ import "io"
 type complex64Encoder struct{ store *complex64 }
 
 func (complex64Encoder) Signature() string {
-	return "not yet implemented"
+	return "complex64"
 }
 
 func (self complex64Encoder) Marshal(w io.Writer) (int, error) {
