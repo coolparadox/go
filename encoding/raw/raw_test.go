@@ -551,7 +551,7 @@ func TestFloat32Encoder(t *testing.T) {
 	}
 	t.Logf("myData type signature = %s", signature)
 	var b bytes.Buffer
-	myData = rand.Float32() / rand.Float32()
+	myData = (rand.Float32() - rand.Float32()) / rand.Float32()
 	_, err = encoder.Marshal(&b)
 	if err != nil {
 		t.Fatalf("Marshal() failed: %s", err)
@@ -583,7 +583,7 @@ func TestFloat64Encoder(t *testing.T) {
 	}
 	t.Logf("myData type signature = %s", signature)
 	var b bytes.Buffer
-	myData = rand.Float64() / rand.Float64()
+	myData = (rand.Float64() - rand.Float64()) / rand.Float64()
 	_, err = encoder.Marshal(&b)
 	if err != nil {
 		t.Fatalf("Marshal() failed: %s", err)
