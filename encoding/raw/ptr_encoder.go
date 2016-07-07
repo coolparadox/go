@@ -31,22 +31,23 @@ func (self ptrEncoder) Signature() string {
 }
 
 func (self ptrEncoder) Marshal(w io.Writer) (int, error) {
-	/*
 	var nc int
 	storeVal := self.store.Elem()
-	storeLen := storeVal.Len()
-	workerVal := self.workerStore.Elem()
-	for i := 0; i < storeLen; i++ {
-		workerVal.Set(storeVal.Index(i))
-		n, err := self.worker.Marshal(w)
+	if reflect.DeepEqual(storeVal.Interface(), reflect.Zero(storeVal.Type()).Interface()) {
+		n, err := marshalInteger(0x00, 1, w)
 		nc += n
-		if err != nil {
-			return nc, err
-		}
+		return nc, err
 	}
-	return nc, nil
-	*/
-	return 0, fmt.Errorf("not yet implemented")
+	n, err := marshalInteger(0xFF, 1, w)
+	nc += n
+	if err != nil {
+		return nc, nil
+	}
+	workerVal := self.workerStore.Elem()
+	workerVal.Set(storeVal.Elem())
+	n, err = self.worker.Marshal(w)
+	nc += n
+	return nc, err
 }
 
 func (self ptrEncoder) Unmarshal(r io.Reader) (int, error) {
