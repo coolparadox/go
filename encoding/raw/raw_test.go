@@ -673,3 +673,36 @@ func TestComplex128Encoder(t *testing.T) {
 		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
 	}
 }
+
+func TestPtrEncoder(t *testing.T) {
+	var myData *uint32
+	expected_signature := "*uint32"
+	encoder, err := raw.New(&myData)
+	if err != nil {
+		t.Fatalf("New() failed: %s", err)
+	}
+	signature := encoder.Signature()
+	if signature != expected_signature {
+		t.Fatalf("signature mismatch: expected '%s', received '%s'", expected_signature, signature)
+	}
+	t.Logf("myData type signature = %s", signature)
+	var b bytes.Buffer
+	myData = new(uint32)
+	*myData = random_uint32()
+	_, err = encoder.Marshal(&b)
+	if err != nil {
+		t.Fatalf("Marshal() failed: %s", err)
+	}
+	t.Logf("marshal %v --> %v", myData, b.Bytes())
+	myData2 := myData
+	myData = nil
+	var n int
+	n, err = encoder.Unmarshal(&b)
+	if err != nil {
+		t.Fatalf("Unmarshal() failed: %s", err)
+	}
+	t.Logf("unmarshal %v bytes --> %v", n, myData)
+	if !reflect.DeepEqual(myData, myData2) {
+		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
+	}
+}
