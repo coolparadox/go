@@ -27,8 +27,7 @@ type ptrEncoder struct {
 }
 
 func (self ptrEncoder) Signature() string {
-	//return "[" + strconv.Itoa(self.store.Elem().Len()) + "]" + self.worker.Signature()
-	return "not yet implemented"
+	return "*" + self.worker.Signature()
 }
 
 func (self ptrEncoder) Marshal(w io.Writer) (int, error) {
