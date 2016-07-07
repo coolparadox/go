@@ -157,6 +157,6 @@ func makeEncoder(v reflect.Value) (Encoder, error) {
 		if err != nil {
 			return nil, fmt.Errorf("cannot make encoder for pointer: %s", err)
 		}
-		return ptrEncoder{worker:w, workerStore: ws, store: v}, nil
+		return ptrEncoder{worker: w, workerStore: ws, store: v}, nil
 	}
 }

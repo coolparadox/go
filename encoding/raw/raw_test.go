@@ -674,7 +674,7 @@ func TestComplex128Encoder(t *testing.T) {
 	}
 }
 
-func TestPtrNilEncoder(t *testing.T) {
+func TestPtrEncoderNil(t *testing.T) {
 	var myData *uint32
 	expected_signature := "*uint32"
 	encoder, err := raw.New(&myData)
@@ -700,7 +700,7 @@ func TestPtrNilEncoder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unmarshal() failed: %s", err)
 	}
-	t.Logf("unmarshal %v bytes --> &%v", n, *myData)
+	t.Logf("unmarshal %v bytes --> %v", n, myData)
 	if !reflect.DeepEqual(myData, myData2) {
 		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
 	}
@@ -725,7 +725,7 @@ func TestPtrEncoder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Marshal() failed: %s", err)
 	}
-	t.Logf("marshal &%v --> %v", *myData, b.Bytes())
+	t.Logf("marshal &(%v)@%v --> %v", *myData, myData, b.Bytes())
 	myData2 := myData
 	myData = nil
 	var n int
@@ -733,9 +733,8 @@ func TestPtrEncoder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unmarshal() failed: %s", err)
 	}
-	t.Logf("unmarshal %v bytes --> &%v", n, *myData)
+	t.Logf("unmarshal %v bytes --> &(%v)@%v", n, *myData, myData)
 	if !reflect.DeepEqual(myData, myData2) {
 		t.Fatalf("marshal / unmarshal mismatch: expected &%v, received &%v", *myData2, *myData)
 	}
 }
-

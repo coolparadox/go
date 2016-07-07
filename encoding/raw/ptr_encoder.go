@@ -16,7 +16,6 @@
 
 package raw
 
-import "fmt"
 import "io"
 import "reflect"
 
@@ -51,20 +50,23 @@ func (self ptrEncoder) Marshal(w io.Writer) (int, error) {
 }
 
 func (self ptrEncoder) Unmarshal(r io.Reader) (int, error) {
-	/*
 	var nc int
-	storeVal := self.store.Elem()
-	storeLen := storeVal.Len()
-	workerVal := self.workerStore.Elem()
-	for i := 0; i < storeLen; i++ {
-		n, err := self.worker.Unmarshal(r)
-		nc += n
-		if err != nil {
-			return nc, err
-		}
-		storeVal.Index(i).Set(workerVal)
+	v, n, err := unmarshalInteger(r, 1)
+	nc += n
+	if err != nil {
+		return n, err
 	}
+	storeVal := self.store.Elem()
+	if v == 0 {
+		storeVal.Set(reflect.Zero(storeVal.Type()))
+		return nc, nil
+	}
+	storeVal.Set(reflect.New(storeVal.Type().Elem()))
+	n, err = self.worker.Unmarshal(r)
+	nc += n
+	if err != nil {
+		return nc, err
+	}
+	storeVal.Elem().Set(self.workerStore.Elem())
 	return nc, nil
-	*/
-	return 0, fmt.Errorf("not yet implemented")
 }
