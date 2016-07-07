@@ -151,5 +151,12 @@ func makeEncoder(v reflect.Value) (Encoder, error) {
 			}
 		}
 		return structEncoder{store}, nil
+	case reflect.Ptr:
+		ws := reflect.New(v.Type().Elem().Elem())
+		w, err := makeEncoder(ws)
+		if err != nil {
+			return nil, fmt.Errorf("cannot make encoder for pointer: %s", err)
+		}
+		return ptrEncoder{worker:w, workerStore: ws, store: v}, nil
 	}
 }
