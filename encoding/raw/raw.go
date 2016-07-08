@@ -56,6 +56,33 @@ use Unmarshal:
 	}
 	fmt.Printf("%v bytes recovered --> %v\n", n, myData)
 
+Suported Types
+
+ - bool
+ - int8, int16, int32, int64
+ - uint8, uint16, uint32, uint64
+ - float32, float64
+ - complex64, complex128
+ - string
+ - array of any supported type
+ - map of any supported type
+ - ptr to any supported type
+ - slice of any supported type
+ - struct with fields of any supported type
+
+Unsupported Types
+
+ - int, uint, uintptr (depth is platform dependent)
+ - unsafe pointer (not meaningful across systems)
+ - chan, func, interface (language plumbing)
+
+Issues
+
+no type check when unmarshalling
+bound to store var
+unmarshal of ptr creates new ptrs
+nil slices and maps
+
 */
 package raw
 
