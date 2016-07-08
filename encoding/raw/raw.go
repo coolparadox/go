@@ -23,9 +23,9 @@ Create a variable to serve as a placeholder to the typed data you want to
 serialize, and use New to create an encoder for it:
 
 	type MyType struct {
-		id uint32
-		name string
-		age uint8
+		Id uint32
+		Name string
+		Age uint8
 	}
 	var myData MyType
 	encoder, err := raw.New(&myData)
@@ -58,34 +58,44 @@ use Unmarshal:
 
 Suported Types
 
- - bool
- - int8, int16, int32, int64
- - uint8, uint16, uint32, uint64
- - float32, float64
- - complex64, complex128
- - string
- - array of any supported type
- - map of any supported type
- - ptr to any supported type
- - slice of any supported type
- - struct with fields of any supported type
+Types of the following kinds are supported by Raw:
+bool,
+int8, int16, int32, int64,
+uint8, uint16, uint32, uint64,
+float32, float64,
+complex64, complex128,
+string,
+array of any supported type,
+map of any supported type,
+pointer to any supported type,
+slice of any supported type,
+struct with fields of any supported type.
 
 Unsupported Types
 
- - int, uint, uintptr (depth is platform dependent)
- - unsafe pointer (not meaningful across systems)
- - chan, func, interface (language plumbing)
+Types of the following kinds are not supported:
+int, uint, uintptr (their size is platform dependent);
+unsafe pointer (not meaningful across systems);
+chan, func, interface (language plumbing).
 
 Issues
 
-An encoder is eternally bound to a variable that serves as the access point to unmarshaled (typed) data.
+The placeholder variable (see New)
+is the access point to unmarshaled data for a given encoder.
+The encoder is eternally bound to its placeholder variable.
 
-Marshaled data doesn't contain type information.
-It's up to the programmer to ensure data is unmarshaled by an encoder created after the same underlying type. See Signature method.
-
-Unmarshal of array, map, ptr or slice always creates new values (there is no reuse of allocated resources).
+Unmarshal of array, map, ptr or slice always creates new values
+(there is no reuse of allocated resources).
 
 A nil map or slice is marshaled as a non nil value with zero elements.
+
+Structs must have all fields exported.
+
+Marshaled data doesn't contain type information.
+It's up to the programmer to ensure that unmarshal is performed by an
+encoder created
+after the same type kind of the encoder that generated the marshaled data.
+One way of achieving this is to compare Encoders's signatures (see Signature).
 
 */
 package raw
@@ -94,29 +104,38 @@ import "fmt"
 import "io"
 import "reflect"
 
-// Encoder can transform typed data to a sequence of bytes and vice-versa.
+/*
+Encoder can transform typed data to a sequence of bytes and vice-versa.
+
+Signature answers a textual representation of the type kind of its placeholder
+variable (see New).
+
+Marshal converts typed data of the placeholder variable
+to a sequence of bytes and writes it to an io.Writer.
+Returns the number of bytes written.
+
+Unmarshal reads a sequence of bytes from an io.Reader
+and converts it to typed data stored in the placeholder variable.
+Returns the number of bytes read.
+*/
 type Encoder interface {
-
-	// Signature answers a textual representation of the underlying type the encoder was created after.
 	Signature() string
-
-	// Marshal converts typed data of the placeholder variable (see New) to a sequence of bytes and writes it to an io.Writer.
-	// Returns the number of bytes written.
 	Marshal(io.Writer) (int, error)
-
-	// Unmarshal reads a sequence of bytes from an io.Reader and converts it to typed data stored in the placeholder variable (see New).
-	// Returns the number of bytes read.
 	Unmarshal(io.Reader) (int, error)
 }
 
-// New creates an Encoder for a type.
-//
-// Parameter holder must be a pointer to a variable of any supported type (see Supported Types).
-// The created Encoder will use this variable as a placeholder of typed data during work.
-//
-// Returns an Encoder for the type of the placeholder variable.
-func New(holder interface{}) (Encoder, error) {
-	return makeEncoder(reflect.ValueOf(holder))
+/*
+New creates an Encoder for a type.
+
+It must be given a pointer to a variable of any supported type
+(see Supported Types).
+The resulting Encoder will use this variable as a placeholder of typed data
+during work.
+
+Returns an Encoder bound to the placeholder variable.
+*/
+func New(placeholder interface{}) (Encoder, error) {
+	return makeEncoder(reflect.ValueOf(placeholder))
 }
 
 // makeEncoder recursively creates an Encoder.
