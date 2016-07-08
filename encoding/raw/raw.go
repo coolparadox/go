@@ -78,10 +78,14 @@ Unsupported Types
 
 Issues
 
-no type check when unmarshalling
-bound to store var
-unmarshal of ptr creates new ptrs
-nil slices and maps
+An encoder is eternally bound to a variable that serves as the access point to unmarshaled (typed) data.
+
+Marshaled data doesn't contain type information.
+It's up to the programmer to ensure data is unmarshaled by an encoder created after the same underlying type. See Signature method.
+
+Unmarshal of array, map, ptr or slice always creates new values (there is no reuse of allocated resources).
+
+A nil map or slice is marshaled as a non nil value with zero elements.
 
 */
 package raw
@@ -90,20 +94,36 @@ import "fmt"
 import "io"
 import "reflect"
 
+// Encoder can transform typed data to a sequence of bytes and vice-versa.
 type Encoder interface {
+
+	// Signature answers a textual representation of the underlying type the encoder was created after.
 	Signature() string
+
+	// Marshal converts typed data of the placeholder variable (see New) to a sequence of bytes and writes it to an io.Writer.
+	// Returns the number of bytes written.
 	Marshal(io.Writer) (int, error)
+
+	// Unmarshal reads a sequence of bytes from an io.Reader and converts it to typed data stored in the placeholder variable (see New).
+	// Returns the number of bytes read.
 	Unmarshal(io.Reader) (int, error)
 }
 
-func New(data interface{}) (Encoder, error) {
-	return makeEncoder(reflect.ValueOf(data))
+// New creates an Encoder for a type.
+//
+// Parameter holder must be a pointer to a variable of any supported type (see Supported Types).
+// The created Encoder will use this variable as a placeholder of typed data during work.
+//
+// Returns an Encoder for the type of the placeholder variable.
+func New(holder interface{}) (Encoder, error) {
+	return makeEncoder(reflect.ValueOf(holder))
 }
 
+// makeEncoder recursively creates an Encoder.
 func makeEncoder(v reflect.Value) (Encoder, error) {
 	var err error
 	if v.Kind() != reflect.Ptr {
-		return nil, fmt.Errorf("storage variable must be passed by reference")
+		return nil, fmt.Errorf("placeholder variable must be passed by reference")
 	}
 	k := v.Elem().Kind()
 	switch k {
