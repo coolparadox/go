@@ -16,13 +16,16 @@
 
 package raw_test
 
-import "bytes"
-import "time"
-import "math/rand"
-import "reflect"
-import "strconv"
-import "testing"
-import "github.com/coolparadox/go/encoding/raw"
+import (
+	"bytes"
+	"fmt"
+	"math/rand"
+	"reflect"
+	"strconv"
+	"testing"
+	"time"
+	"github.com/coolparadox/go/encoding/raw"
+)
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -737,4 +740,49 @@ func TestPtrEncoder(t *testing.T) {
 	if !reflect.DeepEqual(myData, myData2) {
 		t.Fatalf("marshal / unmarshal mismatch: expected &%v, received &%v", *myData2, *myData)
 	}
+}
+
+func Example() {
+
+	// Let's say we want to serialize a slice of strings
+	var myData []string
+
+	// Bind an encoder to the placeholder variable
+	encoder, err := raw.New(&myData)
+	if err != nil {
+		panic("failed to create encoder: " + err.Error())
+	}
+	fmt.Printf("encoder signature: %s\n", encoder.Signature())
+
+	// Let's populate the placeholder for demonstration
+	myData = make([]string, 2)
+	myData[0] = "hello"
+	myData[1] = "world"
+	fmt.Printf("original data: %v\n", myData)
+
+	// Serialize placeholder contents
+	var buf bytes.Buffer
+	_, err = encoder.Marshal(&buf)
+	if err != nil {
+		panic("failed to marshal: " + err.Error())
+	}
+
+	// Mess up with placeholder
+	myData = make([]string, 3)
+	myData[0] = "goodbye"
+	myData[1] = "cruel"
+	myData[2] = "world"
+
+	// Recover data from serial representation
+	_, err = encoder.Unmarshal(&buf)
+	if err != nil {
+		panic("failed to unmarshal: " + err.Error())
+	}
+	fmt.Printf("recovered data: %v\n", myData)
+
+	// Output:
+	// encoder signature: []string
+	// original data: [hello world]
+	// recovered data: [hello world]
+
 }
