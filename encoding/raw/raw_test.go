@@ -754,7 +754,7 @@ func Example() {
 	}
 	fmt.Printf("encoder signature: %s\n", encoder.Signature())
 
-	// Let's populate the placeholder for demonstration
+	// Let's populate placeholder for demonstration
 	myData = make([]string, 2)
 	myData[0] = "hello"
 	myData[1] = "world"
@@ -767,7 +767,7 @@ func Example() {
 		panic("failed to marshal: " + err.Error())
 	}
 
-	// Mess up with placeholder
+	// Mess up with placeholder for demonstrating recovery
 	myData = make([]string, 3)
 	myData[0] = "goodbye"
 	myData[1] = "cruel"

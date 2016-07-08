@@ -97,6 +97,9 @@ encoder created
 after the same type kind of the encoder that generated the marshaled data.
 One way of achieving this is to compare Encoders's signatures (see Signature).
 
+Length of slices and maps is casted to uint32 prior to marshal, even in 64bit
+systems.
+
 */
 package raw
 
