@@ -59,7 +59,7 @@ Marshaled data doesn't contain type information.
 It's up to the programmer to ensure that unmarshal is performed by an
 encoder created
 after the same type kind of the encoder that generated the marshaled data.
-One way of achieving this is to compare Encoders's signatures (see Signature).
+One way of achieving this is to compare Encoder's signatures (see Signature).
 
 Structs must have all fields exported.
 
@@ -80,15 +80,15 @@ import "reflect"
 /*
 Encoder can transform typed data to a sequence of bytes and vice-versa.
 
-Signature answers a textual representation of the type kind of its placeholder
+Signature answers a textual representation of the type kind of the placeholder
 variable (see New).
 
-Marshal converts typed data of the placeholder variable
+Marshal converts the contents of the placeholder variable
 to a sequence of bytes and writes it to an io.Writer.
 Returns the number of bytes written.
 
-Unmarshal reads a sequence of bytes from an io.Reader
-and converts it to typed data stored in the placeholder variable.
+Unmarshal reads a previously marshaled sequence of bytes from an io.Reader
+and populates the placeholder variable with recovered data.
 Returns the number of bytes read.
 */
 type Encoder interface {
@@ -100,10 +100,9 @@ type Encoder interface {
 /*
 New creates an Encoder for a type.
 
-It must be given a pointer to a variable of any supported type
+It requires a pointer to a variable of any supported type
 (see Supported Types).
-The resulting Encoder will use this variable as a placeholder of typed data
-during work.
+The resulting Encoder uses this variable as a placeholder of typed data.
 
 Returns an Encoder bound to the placeholder variable.
 */
@@ -111,7 +110,7 @@ func New(placeholder interface{}) (Encoder, error) {
 	return makeEncoder(reflect.ValueOf(placeholder))
 }
 
-// makeEncoder recursively creates an Encoder.
+// makeEncoder creates an Encoder.
 func makeEncoder(v reflect.Value) (Encoder, error) {
 	var err error
 	if v.Kind() != reflect.Ptr {
