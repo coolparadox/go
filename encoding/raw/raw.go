@@ -49,17 +49,11 @@ int, uint, uintptr (their size is platform dependent);
 unsafe pointer (not meaningful across systems);
 chan, func, interface (language plumbing).
 
-Issues
+Remarks
 
 The placeholder variable (see New)
 is the access point to unmarshaled data for a given encoder.
 The encoder is eternally bound to its placeholder variable.
-
-Marshaled data doesn't contain type information.
-It's up to the programmer to ensure that unmarshal is performed by an
-encoder created
-after the same type kind of the encoder that generated the marshaled data.
-One way of achieving this is to compare Encoder's signatures (see Signature).
 
 Structs must have all fields exported.
 
@@ -68,7 +62,19 @@ Unmarshal of array, map, ptr or slice always creates new values
 
 A nil map or slice is marshaled as a non nil value with zero elements.
 
-Length of slices and maps is assumed to fit in uint32 during marshal.
+Length of slices and maps is silently assumed to fit in uint32 during marshal.
+
+Caveats
+
+Marshaled data doesn't contain type information.
+It's up to the programmer to ensure that unmarshal is performed by an
+encoder created
+after the same type kind of the encoder that generated the marshaled data.
+One way of achieving this is to compare Encoder's signatures (see Signature).
+
+Whish List
+
+Document syntax of marshaled data.
 
 */
 package raw
