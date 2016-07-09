@@ -19,12 +19,12 @@ package raw_test
 import (
 	"bytes"
 	"fmt"
+	"github.com/coolparadox/go/encoding/raw"
 	"math/rand"
 	"reflect"
 	"strconv"
 	"testing"
 	"time"
-	"github.com/coolparadox/go/encoding/raw"
 )
 
 func init() {
@@ -785,4 +785,48 @@ func Example() {
 	// original data: [hello world]
 	// recovered data: [hello world]
 
+}
+
+func TestSliceSliceStructEncoder(t *testing.T) {
+	type MyStruct struct {
+		A uint8
+		B float32
+	}
+	n := int(random_uint8()%10 + 1)
+	var myData [][]MyStruct
+	expected_signature := "[][]struct { uint8; float32 }"
+	encoder, err := raw.New(&myData)
+	if err != nil {
+		t.Fatalf("New() failed: %s", err)
+	}
+	signature := encoder.Signature()
+	if signature != expected_signature {
+		t.Fatalf("signature mismatch: expected '%s', received '%s'", expected_signature, signature)
+	}
+	t.Logf("myData type signature = %s", signature)
+	myData = make([][]MyStruct, n, n)
+	for i := 0; i < len(myData); i++ {
+		m := int(random_uint8()%10 + 1)
+		myData[i] = make([]MyStruct, m, m)
+		for j := 0; j < len(myData[i]); j++ {
+			myData[i][j].A = random_uint8()
+			myData[i][j].B = random_float32()
+		}
+	}
+	var b bytes.Buffer
+	_, err = encoder.Marshal(&b)
+	if err != nil {
+		t.Fatalf("Marshal() failed: %s", err)
+	}
+	t.Logf("marshal %v --> %v", myData, b.Bytes())
+	myData2 := myData
+	myData = nil
+	n, err = encoder.Unmarshal(&b)
+	if err != nil {
+		t.Fatalf("Unmarshal() failed: %s", err)
+	}
+	t.Logf("unmarshal %v bytes --> %v", n, myData)
+	if !reflect.DeepEqual(myData, myData2) {
+		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
+	}
 }
