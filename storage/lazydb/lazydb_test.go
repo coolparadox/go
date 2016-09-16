@@ -1,23 +1,23 @@
 // Copyright 2016 Rafael Lorandi <coolparadox@gmail.com>
-// This file is part of Concur, a generic value storage library
+// This file is part of LazyDB, a generic value storage library
 // for the Go language.
 //
-// Concur is free software: you can redistribute it and/or modify
+// LazyDB is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// Concur is distributed in the hope that it will be useful,
+// LazyDB is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Concur. If not, see <http://www.gnu.org/licenses/>.
+// along with LazyDB. If not, see <http://www.gnu.org/licenses/>.
 
-package concur_test
+package lazydb_test
 
-import "github.com/coolparadox/go/storage/concur"
+import "github.com/coolparadox/go/storage/lazydb"
 import "github.com/coolparadox/go/sort/uint32slice"
 import "testing"
 import "os"
@@ -33,15 +33,15 @@ var howManySaves uint
 var keyBase uint
 
 func init() {
-	flag.StringVar(&myPath, "dir", "/tmp/my_data", "path to concur collection")
+	flag.StringVar(&myPath, "dir", "/tmp/my_data", "path to LazyDB collection")
 	flag.UintVar(&howManySaves, "saves", 1000, "how many keys to create")
 	flag.UintVar(&keyBase, "base", 0, "numeric base of key components")
 }
 
-var db concur.Concur
+var db lazydb.LazyDB
 
 func TestInit(t *testing.T) {
-	t.Logf("path to concur db = '%s'", myPath)
+	t.Logf("path to lazydb collection = '%s'", myPath)
 	t.Logf("save test count = %v", howManySaves)
 	t.Logf("numeric base of key components = %v", keyBase)
 	var err error
@@ -55,9 +55,9 @@ func TestInit(t *testing.T) {
 
 func TestWipeEmpty(t *testing.T) {
 	var err error
-	err = concur.Wipe(myPath)
+	err = lazydb.Wipe(myPath)
 	if err != nil {
-		t.Fatalf("concur.Wipe failed: %s", err)
+		t.Fatalf("lazydb.Wipe failed: %s", err)
 	}
 	file, err := os.Open(myPath)
 	if err != nil {
@@ -66,23 +66,23 @@ func TestWipeEmpty(t *testing.T) {
 	defer file.Close()
 	_, err = file.Readdir(1)
 	if err != io.EOF {
-		t.Fatalf("concur.Wipe did not empty directory '%s'", myPath)
+		t.Fatalf("lazydb.Wipe did not empty directory '%s'", myPath)
 	}
 }
 
 func TestNewEmpty(t *testing.T) {
 	var err error
-	db, err = concur.New(myPath, uint32(keyBase))
+	db, err = lazydb.New(myPath, uint32(keyBase))
 	if err != nil {
-		t.Fatalf("concur.New failed in creating a new database: %s", err)
+		t.Fatalf("lazydb.New failed in creating a new database: %s", err)
 	}
 }
 
 func TestNewNotEmpty(t *testing.T) {
 	var err error
-	_, err = concur.New(myPath, rand.Uint32())
+	_, err = lazydb.New(myPath, rand.Uint32())
 	if err != nil {
-		t.Fatalf("concur.New failed in opening an existent database: %s", err)
+		t.Fatalf("lazydb.New failed in opening an existent database: %s", err)
 	}
 }
 
@@ -95,23 +95,23 @@ func TestSaveAs(t *testing.T) {
 
 	err = db.SaveAs(0, sample)
 	if err != nil {
-		t.Fatalf("concur.SaveAs failed: %s", err)
+		t.Fatalf("lazydb.SaveAs failed: %s", err)
 	}
 	loaded, err := db.Load(0)
 	if err != nil {
-		t.Fatalf("concur.Load failed: %s", err)
+		t.Fatalf("lazydb.Load failed: %s", err)
 	}
 	if !bytes.Equal(loaded, sample) {
 		t.Fatalf("save & load mismatch: saved %v loaded %v", sample, loaded)
 	}
 
-	err = db.SaveAs(concur.MaxKey, sample)
+	err = db.SaveAs(lazydb.MaxKey, sample)
 	if err != nil {
-		t.Fatalf("concur.SaveAs failed: %s", err)
+		t.Fatalf("lazydb.SaveAs failed: %s", err)
 	}
-	loaded, err = db.Load(concur.MaxKey)
+	loaded, err = db.Load(lazydb.MaxKey)
 	if err != nil {
-		t.Fatalf("concur.Load failed: %s", err)
+		t.Fatalf("lazydb.Load failed: %s", err)
 	}
 	if !bytes.Equal(loaded, sample) {
 		t.Fatalf("save & load mismatch: saved %v loaded %v", sample, loaded)
@@ -119,12 +119,12 @@ func TestSaveAs(t *testing.T) {
 
 	err = db.Erase(0)
 	if err != nil {
-		t.Fatalf("concur.Erase(0) failed: %s", err)
+		t.Fatalf("lazydb.Erase(0) failed: %s", err)
 	}
 
-	err = db.Erase(concur.MaxKey)
+	err = db.Erase(lazydb.MaxKey)
 	if err != nil {
-		t.Fatalf("concur.Erase(concur.MaxKey) failed: %s", err)
+		t.Fatalf("lazydb.Erase(lazydb.MaxKey) failed: %s", err)
 	}
 
 }
@@ -144,10 +144,10 @@ func TestSaveMany(t *testing.T) {
 		value := byte(i % 256)
 		var key uint32
 		if i%2 == 0 {
-			// test concur.SaveAs
+			// test lazydb.SaveAs
 			for {
 				key = rand.Uint32()
-				if key >= concur.MaxKey {
+				if key >= lazydb.MaxKey {
 					continue
 				}
 				_, ok := savedKeys[key]
@@ -157,13 +157,13 @@ func TestSaveMany(t *testing.T) {
 			}
 			err = db.SaveAs(key, []byte{value})
 			if err != nil {
-				t.Fatalf("concur.SaveAs failed: %s", err)
+				t.Fatalf("lazydb.SaveAs failed: %s", err)
 			}
 		} else {
-			// test concur.Save
+			// test lazydb.Save
 			key, err = db.Save([]byte{value})
 			if err != nil {
-				t.Fatalf("concur.Save failed: %s", err)
+				t.Fatalf("lazydb.Save failed: %s", err)
 			}
 		}
 		savedKeys[key] = nil
@@ -177,7 +177,7 @@ func TestLoadMany(t *testing.T) {
 		key := savedData[i].key
 		loaded, err := db.Load(key)
 		if err != nil {
-			t.Fatalf("concur.Load failed: %s", err)
+			t.Fatalf("lazydb.Load failed: %s", err)
 		}
 		saved := savedData[i].value
 		if loaded[0] != saved[0] {
@@ -192,13 +192,13 @@ func TestKeyListAscending(t *testing.T) {
 	for err == nil {
 		//t.Logf("found key: %v", key)
 		receivedKeys = append(receivedKeys, key)
-		if key >= concur.MaxKey {
+		if key >= lazydb.MaxKey {
 			break
 		}
 		key, err = db.FindKey(key+1, true)
 	}
-	if err != nil && err != concur.KeyNotFoundError {
-		t.Fatalf("concur.FindKey failed: %s", err)
+	if err != nil && err != lazydb.KeyNotFoundError {
+		t.Fatalf("lazydb.FindKey failed: %s", err)
 	}
 	var savedKeys []uint32
 	for _, data := range savedData {
@@ -220,7 +220,7 @@ func TestKeyListAscending(t *testing.T) {
 
 func TestKeyListDescending(t *testing.T) {
 	var receivedKeys []uint32
-	key, err := db.FindKey(concur.MaxKey, false)
+	key, err := db.FindKey(lazydb.MaxKey, false)
 	for err == nil {
 		//t.Logf("found key: %v", key)
 		receivedKeys = append(receivedKeys, key)
@@ -229,8 +229,8 @@ func TestKeyListDescending(t *testing.T) {
 		}
 		key, err = db.FindKey(key-1, false)
 	}
-	if err != nil && err != concur.KeyNotFoundError {
-		t.Fatalf("concur.FindKey failed: %s", err)
+	if err != nil && err != lazydb.KeyNotFoundError {
+		t.Fatalf("lazydb.FindKey failed: %s", err)
 	}
 	var savedKeys []uint32
 	for _, data := range savedData {
@@ -256,7 +256,7 @@ func TestErase(t *testing.T) {
 		key := savedData[i].key
 		err := db.Erase(key)
 		if err != nil {
-			t.Fatalf("concur.Erase failed: %s", err)
+			t.Fatalf("lazydb.Erase failed: %s", err)
 		}
 	}
 }
@@ -267,15 +267,15 @@ func TestExists(t *testing.T) {
 		key := savedData[i].key
 		exists, err := db.Exists(key)
 		if err != nil {
-			t.Fatalf("concur.Exists failed: %s", err)
+			t.Fatalf("lazydb.Exists failed: %s", err)
 		}
 		if i < limit {
 			if exists {
-				t.Fatalf("concur.Exists mismatch for key %v: %v", key, exists)
+				t.Fatalf("lazydb.Exists mismatch for key %v: %v", key, exists)
 			}
 		} else {
 			if !exists {
-				t.Fatalf("concur.Exists mismatch for key %v: %v", key, exists)
+				t.Fatalf("lazydb.Exists mismatch for key %v: %v", key, exists)
 			}
 		}
 	}
@@ -283,9 +283,9 @@ func TestExists(t *testing.T) {
 
 func TestWipeNotEmpty(t *testing.T) {
 	var err error
-	err = concur.Wipe(myPath)
+	err = lazydb.Wipe(myPath)
 	if err != nil {
-		t.Fatalf("concur.Wipe failed: %s", err)
+		t.Fatalf("lazydb.Wipe failed: %s", err)
 	}
 }
 
@@ -297,8 +297,8 @@ func Example() {
 	// Create an empty database
 	dbPath := "/tmp/my_db"
 	os.MkdirAll(dbPath, 0755)
-	concur.Wipe(dbPath)
-	db, _ := concur.New(dbPath, 0)
+	lazydb.Wipe(dbPath)
+	db, _ := lazydb.New(dbPath, 0)
 
 	// Save values in new keys
 	k1, _ := db.Save([]byte("goodbye"))
@@ -316,14 +316,14 @@ func Example() {
 		// Print value
 		val, _ := db.Load(key)
 		fmt.Printf("key %v: %s\n", key, string(val))
-		if key >= concur.MaxKey {
+		if key >= lazydb.MaxKey {
 			// Maximum key reached
 			break
 		}
 		// Find next existent key
 		key, err = db.FindKey(key+1, true)
 	}
-	if err != nil && err != concur.KeyNotFoundError {
+	if err != nil && err != lazydb.KeyNotFoundError {
 		// An abnormal error occurred
 		panic(err)
 	}
