@@ -1,21 +1,21 @@
 // Copyright 2016 Rafael Lorandi <coolparadox@gmail.com>
-// This file is part of Concur, a generic value storage library
+// This file is part of LazyDB, a generic value storage library
 // for the Go language.
 //
-// Concur is free software: you can redistribute it and/or modify
+// LazyDB is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// Concur is distributed in the hope that it will be useful,
+// LazyDB is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Concur. If not, see <http://www.gnu.org/licenses/>.
+// along with LazyDB. If not, see <http://www.gnu.org/licenses/>.
 
-package concur
+package lazydb
 
 import "fmt"
 import "os"
@@ -116,7 +116,9 @@ func findKeyInLevel(br brokenKey, level int, baseDir string, keyBase uint32, key
 	kcDir := keyComponentPath(br, level+1, baseDir, keyDepth)
 	// Find a matching key component in this depth level.
 	var findMode int = findModeAscending
-	if !ascending { findMode = findModeDescending }
+	if !ascending {
+		findMode = findModeDescending
+	}
 	kc, err := findKeyComponentInDir(kcDir, keyBase, br[level], findMode)
 	if err != nil {
 		if err == KeyNotFoundError {
