@@ -36,13 +36,6 @@ Issues
 Keys are 32 bit unsigned integers. Values are byte sequences of arbitrary
 length.
 
-Apart from storage implementations that map a single file as the
-database, this package takes an experimental approach where keys are managed
-using filesystem subdirectories (see Key Mapping Internals below).
-Therefore the filesystem chosen for storage
-is the real engine that maps keys to values, and their designers are the ones
-who must be given credit if package LazyDB happens to perform satisfactorily.
-
 Although lazydb write methods commit changes to filesystem immediately on
 successful return,
 commited data may reside temporarily in on-memory filesystem's caches.
@@ -54,13 +47,17 @@ Wipe method can take a long time to return.
 
 Key Mapping Internals
 
-(This is an explanation of how 32 bit keys are internally mapped to values
-by the implementation. You don't really need to know it for using lazydb;
-feel free to skip this section.)
+Apart from storage implementations that map a single file as the database,
+LazyDB relies on subdirectories of the filesystem for managing keys
+(hence the "lazy" part of its name).
+Therefore the filesystem chosen for storage
+is the real engine that maps keys to values, and their designers are the ones
+who must be given credit if package LazyDB happens to achieve satisfactory
+performance.
 
 Each key is uniquely associated with a distinct file in the filesystem.
 The path to the file is derived from the key, eg. a key of 0x12345678,
-assuming the numeric base of key components is set to 16, is the file
+assuming the numeric base of key components is set to 16, is file
 1/2/3/4/5/6/7/8 under the database directory. The value associated with the
 key is the content of the file. Conversely, keys in the database are retrieved
 by parsing the path of existent files.
@@ -68,8 +65,8 @@ by parsing the path of existent files.
 When creating a new database, user may choose the numeric base of key
 components. This value ultimately defines how many directories are allowed to
 exist in each subdirectory level towards reaching associated files.
-The base can range from MinBase (2, resulting in a level depth of 32 for
-holding a 32 bit key) to MaxBase (0x10000, giving a level depth of only 2).
+The base can range from MinBase (2, resulting in a level depth of 32)
+to MaxBase (0x10000, for a level depth of 2).
 
 Whether the numeric base chosen, directories and files are named by single
 unicode characters, where the first 10 ones in the mapping range are decimal
