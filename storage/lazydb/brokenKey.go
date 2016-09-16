@@ -116,7 +116,9 @@ func findKeyInLevel(br brokenKey, level int, baseDir string, keyBase uint32, key
 	kcDir := keyComponentPath(br, level+1, baseDir, keyDepth)
 	// Find a matching key component in this depth level.
 	var findMode int = findModeAscending
-	if !ascending { findMode = findModeDescending }
+	if !ascending {
+		findMode = findModeDescending
+	}
 	kc, err := findKeyComponentInDir(kcDir, keyBase, br[level], findMode)
 	if err != nil {
 		if err == KeyNotFoundError {

@@ -92,28 +92,29 @@ func TestSaveAs(t *testing.T) {
 		sample[i] = byte(rand.Intn(256))
 	}
 	var err error
-
-	err = db.SaveAs(0, sample)
+	err = db.SaveAs(0, bytes.NewReader(sample))
 	if err != nil {
 		t.Fatalf("lazydb.SaveAs failed: %s", err)
 	}
-	loaded, err := db.Load(0)
+	loaded := new(bytes.Buffer)
+	err = db.Load(0, loaded)
 	if err != nil {
 		t.Fatalf("lazydb.Load failed: %s", err)
 	}
-	if !bytes.Equal(loaded, sample) {
+	if !bytes.Equal(loaded.Bytes(), sample) {
 		t.Fatalf("save & load mismatch: saved %v loaded %v", sample, loaded)
 	}
 
-	err = db.SaveAs(lazydb.MaxKey, sample)
+	err = db.SaveAs(lazydb.MaxKey, bytes.NewReader(sample))
 	if err != nil {
 		t.Fatalf("lazydb.SaveAs failed: %s", err)
 	}
-	loaded, err = db.Load(lazydb.MaxKey)
+	loaded = new(bytes.Buffer)
+	err = db.Load(lazydb.MaxKey, loaded)
 	if err != nil {
 		t.Fatalf("lazydb.Load failed: %s", err)
 	}
-	if !bytes.Equal(loaded, sample) {
+	if !bytes.Equal(loaded.Bytes(), sample) {
 		t.Fatalf("save & load mismatch: saved %v loaded %v", sample, loaded)
 	}
 
@@ -155,13 +156,13 @@ func TestSaveMany(t *testing.T) {
 					break
 				}
 			}
-			err = db.SaveAs(key, []byte{value})
+			err = db.SaveAs(key, bytes.NewReader([]byte{value}))
 			if err != nil {
 				t.Fatalf("lazydb.SaveAs failed: %s", err)
 			}
 		} else {
 			// test lazydb.Save
-			key, err = db.Save([]byte{value})
+			key, err = db.Save(bytes.NewReader([]byte{value}))
 			if err != nil {
 				t.Fatalf("lazydb.Save failed: %s", err)
 			}
@@ -175,12 +176,13 @@ func TestSaveMany(t *testing.T) {
 func TestLoadMany(t *testing.T) {
 	for i := uint(0); i < howManySaves; i++ {
 		key := savedData[i].key
-		loaded, err := db.Load(key)
+		loaded := new(bytes.Buffer)
+		err := db.Load(key, loaded)
 		if err != nil {
 			t.Fatalf("lazydb.Load failed: %s", err)
 		}
 		saved := savedData[i].value
-		if loaded[0] != saved[0] {
+		if loaded.Bytes()[0] != saved[0] {
 			t.Fatalf("save & load mismatch: saved %v loaded %v key %v", saved, loaded, key)
 		}
 	}
@@ -301,21 +303,22 @@ func Example() {
 	db, _ := lazydb.New(dbPath, 0)
 
 	// Save values in new keys
-	k1, _ := db.Save([]byte("goodbye"))
-	k2, _ := db.Save([]byte("cruel"))
-	k3, _ := db.Save([]byte("world"))
+	k1, _ := db.Save(bytes.NewReader([]byte("goodbye")))
+	k2, _ := db.Save(bytes.NewReader([]byte("cruel")))
+	k3, _ := db.Save(bytes.NewReader([]byte("world")))
 
 	// Update, remove
-	db.SaveAs(k1, []byte("hello"))
+	db.SaveAs(k1, bytes.NewReader([]byte("hello")))
 	db.Erase(k2)
-	db.SaveAs(k3, []byte("folks"))
+	db.SaveAs(k3, bytes.NewReader([]byte("folks")))
 
 	// Loop through keys
 	key, err := db.FindKey(0, true)
 	for err == nil {
 		// Print value
-		val, _ := db.Load(key)
-		fmt.Printf("key %v: %s\n", key, string(val))
+		val := new(bytes.Buffer)
+		db.Load(key, val)
+		fmt.Printf("key %v: %s\n", key, string(val.Bytes()))
 		if key >= lazydb.MaxKey {
 			// Maximum key reached
 			break

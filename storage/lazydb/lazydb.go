@@ -26,9 +26,10 @@ filesystem. The collection can then be managed by methods of the collection
 handler.
 
 	db, _ := lazydb.New("/path/to/my/collection", 0)
-	key, _ := db.Save(byte[]{1,3,5,7,9}) // store data in a new key
-	val, _ := db.Load(key) // retrieve value of a key
-	db.SaveAs(key, byte[]{0,2,4,6,8}) // update existent key
+	key, _ := db.Save(bytes.NewReader(byte[]{1,3,5,7,9})) // store data in a new key
+	val := new(bytes.Buffer)
+	db.Load(key, val) // retrieve value of a key
+	db.SaveAs(key, bytes.NewReader(byte[]{0,2,4,6,8})) // update existent key
 	db.Erase(key) // remove a key
 
 Issues
@@ -89,7 +90,6 @@ import "path"
 import "fmt"
 import "os"
 import "io"
-import "io/ioutil"
 
 // MaxKey represents the maximum value of a key.
 const MaxKey = 0xFFFFFFFF
@@ -122,9 +122,9 @@ type LazyDB struct {
 	keyDepth    int
 }
 
-// lazydbMarkLabel is the file checked for existence of a lazydb database in a
+// dbMarkLabel is the file checked for existence of a lazydb database in a
 // directory.
-const lazydbMarkLabel string = ".lazydb"
+const dbMarkLabel string = ".lazydb"
 
 // fullMarkLabel is the file that marks if a subdirectory is completely full
 // of key components.
@@ -136,7 +136,7 @@ func (r LazyDB) lazydbLabelExists() error {
 	if !r.initialized {
 		return fmt.Errorf("unitialized lazydb.LazyDB")
 	}
-	lazydbMarkFile := path.Join(r.dir, lazydbMarkLabel)
+	lazydbMarkFile := path.Join(r.dir, dbMarkLabel)
 	_, err := os.Stat(lazydbMarkFile)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -193,7 +193,7 @@ func New(dir string, base uint32) (LazyDB, error) {
 	if !finfo.IsDir() {
 		return LazyDB{}, fmt.Errorf("dir '%s' is not a directory", dir)
 	}
-	lazydbMarkFile := path.Join(dir, lazydbMarkLabel)
+	lazydbMarkFile := path.Join(dir, dbMarkLabel)
 	lazydbFileExists := true
 	finfo, err = os.Stat(lazydbMarkFile)
 	if err != nil {
@@ -266,7 +266,7 @@ func New(dir string, base uint32) (LazyDB, error) {
 }
 
 // SaveAs creates (or updates) a given key with a new value.
-func (r LazyDB) SaveAs(key uint32, value []byte) error {
+func (r LazyDB) SaveAs(key uint32, value io.Reader) error {
 	err := r.lazydbLabelExists()
 	if err != nil {
 		return err
@@ -278,31 +278,41 @@ func (r LazyDB) SaveAs(key uint32, value []byte) error {
 		return fmt.Errorf("cannot lock: %s", err)
 	}
 	defer lockFile.Close()
-	err = ioutil.WriteFile(targetPath, value, 0666)
+	file, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		return fmt.Errorf("cannot write file '%s': %s", targetPath, err)
+		return fmt.Errorf("cannot open file '%s': %s", targetPath, err)
+	}
+	defer file.Close()
+	_, err = io.Copy(file, value)
+	if err != nil {
+		return fmt.Errorf("cannot transfer contents of file '%s': %s", targetPath, err)
 	}
 	return nil
 }
 
 // Load retrieves the value associated with a key.
-func (r LazyDB) Load(key uint32) ([]byte, error) {
+func (r LazyDB) Load(key uint32, value io.Writer) error {
 	err := r.lazydbLabelExists()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	targetDir, targetChar, _ := formatPath(key, r.dir, r.keyBase, r.keyDepth)
 	targetPath := joinPathChar(targetDir, targetChar)
 	lockFile, err := lockDirForRead(targetDir)
 	if err != nil {
-		return nil, fmt.Errorf("cannot lock: %s", err)
+		return fmt.Errorf("cannot lock: %s", err)
 	}
 	defer lockFile.Close()
-	buf, err := ioutil.ReadFile(targetPath)
+	file, err := os.Open(targetPath)
 	if err != nil {
-		return nil, fmt.Errorf("cannot read file '%s': %s", targetPath, err)
+		return fmt.Errorf("cannot open file '%s': %s", targetPath, err)
 	}
-	return buf, nil
+	defer file.Close()
+	_, err = io.Copy(value, file)
+	if err != nil {
+		return fmt.Errorf("cannot transfer contents of file '%s': %s", targetPath, err)
+	}
+	return nil
 }
 
 // Erase erases a key.
@@ -377,8 +387,8 @@ func Wipe(dir string) error {
 		return nil
 	}
 	file.Close()
-	lazydbMarkFile := path.Join(dir, lazydbMarkLabel)
-	lazydbWipingLabel := fmt.Sprintf("%s.wiping", lazydbMarkLabel)
+	lazydbMarkFile := path.Join(dir, dbMarkLabel)
+	lazydbWipingLabel := fmt.Sprintf("%s.wiping", dbMarkLabel)
 	lazydbWipingFile := path.Join(dir, lazydbWipingLabel)
 	_, err = os.Stat(lazydbMarkFile)
 	if err != nil && !os.IsNotExist(err) {
@@ -487,7 +497,7 @@ func (r LazyDB) FindKey(key uint32, ascending bool) (uint32, error) {
 // The key is automatically assigned and guaranteed to be new.
 //
 // Returns the assigned key.
-func (r LazyDB) Save(value []byte) (uint32, error) {
+func (r LazyDB) Save(value io.Reader) (uint32, error) {
 	var err error
 	err = r.lazydbLabelExists()
 	if err != nil {
@@ -496,8 +506,8 @@ func (r LazyDB) Save(value []byte) (uint32, error) {
 	var targetDir string
 	var targetPath string
 	var key uint32
+	// Find a free key.
 	for {
-		// Find a free key.
 		br, err := findFreeKeyFromLevel(newBrokenKey(r.keyDepth), r.keyDepth-1, r.dir, r.keyBase, r.keyDepth)
 		if err != nil {
 			return 0, fmt.Errorf("cannot find free key: %s", err)
@@ -535,9 +545,14 @@ func (r LazyDB) Save(value []byte) (uint32, error) {
 		lockFile.Close()
 	}
 	// A free key was found.
-	err = ioutil.WriteFile(targetPath, value, 0666)
+	file, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		return 0, fmt.Errorf("cannot write file '%s': %s", targetPath, err)
+		return 0, fmt.Errorf("cannot open file '%s': %s", targetPath, err)
+	}
+	defer file.Close()
+	_, err = io.Copy(file, value)
+	if err != nil {
+		return 0, fmt.Errorf("cannot transfer contents of file '%s': %s", targetPath, err)
 	}
 	return key, nil
 }
