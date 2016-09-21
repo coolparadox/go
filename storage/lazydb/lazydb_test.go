@@ -92,12 +92,12 @@ func TestSaveAs(t *testing.T) {
 		sample[i] = byte(rand.Intn(256))
 	}
 	var err error
-	err = db.SaveAs(0, bytes.NewReader(sample))
+	_, err = db.SaveAs(0, bytes.NewReader(sample))
 	if err != nil {
 		t.Fatalf("lazydb.SaveAs failed: %s", err)
 	}
 	loaded := new(bytes.Buffer)
-	err = db.Load(0, loaded)
+	_, err = db.Load(0, loaded)
 	if err != nil {
 		t.Fatalf("lazydb.Load failed: %s", err)
 	}
@@ -105,12 +105,12 @@ func TestSaveAs(t *testing.T) {
 		t.Fatalf("save & load mismatch: saved %v loaded %v", sample, loaded)
 	}
 
-	err = db.SaveAs(lazydb.MaxKey, bytes.NewReader(sample))
+	_, err = db.SaveAs(lazydb.MaxKey, bytes.NewReader(sample))
 	if err != nil {
 		t.Fatalf("lazydb.SaveAs failed: %s", err)
 	}
 	loaded = new(bytes.Buffer)
-	err = db.Load(lazydb.MaxKey, loaded)
+	_, err = db.Load(lazydb.MaxKey, loaded)
 	if err != nil {
 		t.Fatalf("lazydb.Load failed: %s", err)
 	}
@@ -156,13 +156,13 @@ func TestSaveMany(t *testing.T) {
 					break
 				}
 			}
-			err = db.SaveAs(key, bytes.NewReader([]byte{value}))
+			_, err = db.SaveAs(key, bytes.NewReader([]byte{value}))
 			if err != nil {
 				t.Fatalf("lazydb.SaveAs failed: %s", err)
 			}
 		} else {
 			// test lazydb.Save
-			key, err = db.Save(bytes.NewReader([]byte{value}))
+			key, _, err = db.Save(bytes.NewReader([]byte{value}))
 			if err != nil {
 				t.Fatalf("lazydb.Save failed: %s", err)
 			}
@@ -177,7 +177,7 @@ func TestLoadMany(t *testing.T) {
 	for i := uint(0); i < howManySaves; i++ {
 		key := savedData[i].key
 		loaded := new(bytes.Buffer)
-		err := db.Load(key, loaded)
+		_, err := db.Load(key, loaded)
 		if err != nil {
 			t.Fatalf("lazydb.Load failed: %s", err)
 		}
@@ -303,9 +303,9 @@ func Example() {
 	db, _ := lazydb.New(dbPath, 0)
 
 	// Save values in new keys
-	k1, _ := db.Save(bytes.NewReader([]byte("goodbye")))
-	k2, _ := db.Save(bytes.NewReader([]byte("cruel")))
-	k3, _ := db.Save(bytes.NewReader([]byte("world")))
+	k1, _, _ := db.Save(bytes.NewReader([]byte("goodbye")))
+	k2, _, _ := db.Save(bytes.NewReader([]byte("cruel")))
+	k3, _, _ := db.Save(bytes.NewReader([]byte("world")))
 
 	// Update, remove
 	db.SaveAs(k1, bytes.NewReader([]byte("hello")))

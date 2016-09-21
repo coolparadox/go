@@ -75,10 +75,6 @@ digits from 0 to 9, and the next 26 ones are upper case letters from A to Z.
 Thus component bases up to 36 are guaranteed to be mapped by characters in the
 ascii range.
 
-It's worth noting that all this key composition stuff happens transparently
-to the user. Poking around the directory of a lazydb collection, despite it's
-cool for the sake of curiosity, is not required for making use of this package.
-
 Wish List
 
 Document filesystem guidelines for better performance with package lazydb.
@@ -266,53 +262,58 @@ func New(dir string, base uint32) (LazyDB, error) {
 }
 
 // SaveAs creates (or updates) a given key with a new value.
-func (r LazyDB) SaveAs(key uint32, value io.Reader) error {
+// Data is read from src until EOF is reached.
+//
+// Returns the number of bytes read from src.
+func (r LazyDB) SaveAs(key uint32, src io.Reader) (int64, error) {
 	err := r.lazydbLabelExists()
 	if err != nil {
-		return err
+		return 0, err
 	}
-	targetDir, targetChar, _ := formatPath(key, r.dir, r.keyBase, r.keyDepth)
-	targetPath := joinPathChar(targetDir, targetChar)
+	targetDir, _ := formatPath(key, r.dir, r.keyBase, r.keyDepth)
+	targetPath := joinPathChar(targetDir, formatChar(0))
 	lockFile, err := lockDirForWrite(targetDir, true)
 	if err != nil {
-		return fmt.Errorf("cannot lock: %s", err)
+		return 0, fmt.Errorf("cannot lock: %s", err)
 	}
 	defer lockFile.Close()
-	file, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	dst, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		return fmt.Errorf("cannot open file '%s': %s", targetPath, err)
+		return 0, fmt.Errorf("cannot open file '%s': %s", targetPath, err)
 	}
-	defer file.Close()
-	_, err = io.Copy(file, value)
+	defer dst.Close()
+	count, err := io.Copy(dst, src)
 	if err != nil {
-		return fmt.Errorf("cannot transfer contents of file '%s': %s", targetPath, err)
+		return count, fmt.Errorf("cannot copy: %s", err)
 	}
-	return nil
+	return count, nil
 }
 
 // Load retrieves the value associated with a key.
-func (r LazyDB) Load(key uint32, value io.Writer) error {
+//
+// Returns the number of bytes written to dst.
+func (r LazyDB) Load(key uint32, dst io.Writer) (int64, error) {
 	err := r.lazydbLabelExists()
 	if err != nil {
-		return err
+		return 0, err
 	}
-	targetDir, targetChar, _ := formatPath(key, r.dir, r.keyBase, r.keyDepth)
-	targetPath := joinPathChar(targetDir, targetChar)
+	targetDir, _ := formatPath(key, r.dir, r.keyBase, r.keyDepth)
+	targetPath := joinPathChar(targetDir, formatChar(0))
 	lockFile, err := lockDirForRead(targetDir)
 	if err != nil {
-		return fmt.Errorf("cannot lock: %s", err)
+		return 0, fmt.Errorf("cannot lock: %s", err)
 	}
 	defer lockFile.Close()
 	file, err := os.Open(targetPath)
 	if err != nil {
-		return fmt.Errorf("cannot open file '%s': %s", targetPath, err)
+		return 0, fmt.Errorf("cannot open file '%s': %s", targetPath, err)
 	}
 	defer file.Close()
-	_, err = io.Copy(value, file)
+	count, err := io.Copy(dst, file)
 	if err != nil {
-		return fmt.Errorf("cannot transfer contents of file '%s': %s", targetPath, err)
+		return count, fmt.Errorf("cannot copy: %s", err)
 	}
-	return nil
+	return count, nil
 }
 
 // Erase erases a key.
@@ -321,23 +322,15 @@ func (r LazyDB) Erase(key uint32) error {
 	if err != nil {
 		return err
 	}
-	targetDir, targetChar, br := formatPath(key, r.dir, r.keyBase, r.keyDepth)
-	targetPath := joinPathChar(targetDir, targetChar)
-	_, err = os.Stat(targetPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return fmt.Errorf("cannot stat: %s", err)
-	}
+	targetDir, br := formatPath(key, r.dir, r.keyBase, r.keyDepth)
 	lockFile, err := lockDirForWrite(targetDir, false)
 	if err != nil {
 		return fmt.Errorf("cannot lock: %s", err)
 	}
 	defer lockFile.Close()
-	err = os.Remove(targetPath)
+	err = os.RemoveAll(targetDir)
 	if err != nil {
-		return fmt.Errorf("cannot remove file '%s': %s", targetPath, err)
+		return fmt.Errorf("cannot remove directoty: %s", err)
 	}
 	for level := 1; level < r.keyDepth; level++ {
 		targetDir := keyComponentPath(br, level, r.dir, r.keyDepth)
@@ -359,8 +352,8 @@ func (r LazyDB) Exists(key uint32) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	targetDir, targetChar, _ := formatPath(key, r.dir, r.keyBase, r.keyDepth)
-	targetPath := joinPathChar(targetDir, targetChar)
+	targetDir, _ := formatPath(key, r.dir, r.keyBase, r.keyDepth)
+	targetPath := joinPathChar(targetDir, formatChar(0))
 	_, err = os.Stat(targetPath)
 	if err == nil {
 		return true, nil
@@ -495,13 +488,14 @@ func (r LazyDB) FindKey(key uint32, ascending bool) (uint32, error) {
 
 // Save creates a key with a new value.
 // The key is automatically assigned and guaranteed to be new.
+// Data is read from src until EOF is reached.
 //
-// Returns the assigned key.
-func (r LazyDB) Save(value io.Reader) (uint32, error) {
+// Returns the assigned key and the number of bytes read from src.
+func (r LazyDB) Save(src io.Reader) (uint32, int64, error) {
 	var err error
 	err = r.lazydbLabelExists()
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	var targetDir string
 	var targetPath string
@@ -510,7 +504,7 @@ func (r LazyDB) Save(value io.Reader) (uint32, error) {
 	for {
 		br, err := findFreeKeyFromLevel(newBrokenKey(r.keyDepth), r.keyDepth-1, r.dir, r.keyBase, r.keyDepth)
 		if err != nil {
-			return 0, fmt.Errorf("cannot find free key: %s", err)
+			return 0, 0, fmt.Errorf("cannot find free key: %s", err)
 		}
 		if br == nil {
 			// findFreeKeyFromLevel() is supposed to always find a key,
@@ -521,21 +515,20 @@ func (r LazyDB) Save(value io.Reader) (uint32, error) {
 		if err != nil {
 			// As free keys are searched in ascending order, assume impossible
 			// ones indicate exaustion of key space.
-			return 0, fmt.Errorf("no more keys available")
+			return 0, 0, fmt.Errorf("no more keys available")
 		}
-		targetDir = keyComponentPath(br, 1, r.dir, r.keyDepth)
-		targetChar := formatChar(br[0])
-		targetPath = joinPathChar(targetDir, targetChar)
+		targetDir = keyComponentPath(br, 0, r.dir, r.keyDepth)
+		targetPath = joinPathChar(targetDir, formatChar(0))
 		lockFile, err := lockDirForWrite(targetDir, true)
 		if err != nil {
-			return 0, fmt.Errorf("cannot lock: %s", err)
+			return 0, 0, fmt.Errorf("cannot lock: %s", err)
 		}
 		// Make sure another concurrent Save() didn't get the same key.
 		_, err = os.Stat(targetPath)
 		if err != nil {
 			if !os.IsNotExist(err) {
 				lockFile.Close()
-				return 0, fmt.Errorf("cannot check for '%s' existence: %s", targetPath, err)
+				return 0, 0, fmt.Errorf("cannot check for '%s' existence: %s", targetPath, err)
 			}
 			// Yay, our key is ours :-)
 			defer lockFile.Close()
@@ -545,14 +538,14 @@ func (r LazyDB) Save(value io.Reader) (uint32, error) {
 		lockFile.Close()
 	}
 	// A free key was found.
-	file, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	dst, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		return 0, fmt.Errorf("cannot open file '%s': %s", targetPath, err)
+		return 0, 0, fmt.Errorf("cannot open file '%s': %s", targetPath, err)
 	}
-	defer file.Close()
-	_, err = io.Copy(file, value)
+	defer dst.Close()
+	count, err := io.Copy(dst, src)
 	if err != nil {
-		return 0, fmt.Errorf("cannot transfer contents of file '%s': %s", targetPath, err)
+		return 0, count, fmt.Errorf("cannot copy: %s", err)
 	}
-	return key, nil
+	return key, count, nil
 }

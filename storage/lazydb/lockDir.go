@@ -39,7 +39,7 @@ func openLockFile(dir string, create bool) (*os.File, error) {
 
 // lockDir places an advisory lock on a directory.
 // Returns an open file within the directory that holds the lock.
-// The lock may be released by closing the returned file.
+// The lock can be released by closing the returned file.
 func lockDir(dir string, create bool, lockType int) (*os.File, error) {
 	lockFile, err := openLockFile(dir, create)
 	if err != nil {
@@ -59,15 +59,17 @@ func lockDir(dir string, create bool, lockType int) (*os.File, error) {
 }
 
 // lockDirForWrite places an advisory exclusive lock on a directory.
+// If parameter create is false, directory must exist;
+// otherwise it will be created.
 // Returns an open file within the directory that holds the lock.
-// The lock may be released by closing the returned file.
+// The lock can be released by closing the returned file.
 func lockDirForWrite(dir string, create bool) (*os.File, error) {
 	return lockDir(dir, create, unix.LOCK_EX)
 }
 
-// lockDirForRead places an advisory shared lock on a directory.
+// lockDirForRead places an advisory shared lock on an existent directory.
 // Returns an open file within the directory that holds the lock.
-// The lock may be released by closing the returned file.
+// The lock can be released by closing the returned file.
 func lockDirForRead(dir string) (*os.File, error) {
 	return lockDir(dir, false, unix.LOCK_SH)
 }

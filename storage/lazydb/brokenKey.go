@@ -90,14 +90,13 @@ func keyComponentPath(br brokenKey, level int, baseDir string, keyDepth int) str
 }
 
 // formatPath converts a key to a path in the filesystem.
-// Returns:
-// - a directory in filesystem for holding the value file
-// - a character for naming the value file under the directory
-// - key components, if the caller is interested
-func formatPath(key uint32, baseDir string, keyBase uint32, keyDepth int) (string, rune, brokenKey) {
+// Returns
+// the filesystem path for the given key and base,
+// and associated key components.
+func formatPath(key uint32, baseDir string, keyBase uint32, keyDepth int) (string, brokenKey) {
 	br := decomposeKey(key, keyBase, keyDepth)
-	dir := keyComponentPath(br, 1, baseDir, keyDepth)
-	return dir, formatChar(br[0]), br
+	dir := keyComponentPath(br, 0, baseDir, keyDepth)
+	return dir, br
 }
 
 // joinPathChar adds a character to a filesystem path, after appending the
