@@ -166,7 +166,7 @@ func bytesToUint32(b []byte) (uint32, error) {
 	return answer, nil
 }
 
-// New creates a LazyDB value.
+// New creates a LazyDB object.
 //
 // Parameter dir is an absolute path to a directory in the filesystem
 // for storing the collection. If it's the first time this directory is used by
@@ -261,62 +261,89 @@ func New(dir string, base uint32) (LazyDB, error) {
 	}, nil
 }
 
-// SaveAs creates (or updates) a given key with a new value.
-// Data is read from src until EOF is reached.
+// SaveAs updates values for a given key.
+// Key is created if absent.
 //
-// Returns the number of bytes read from src.
-func (r LazyDB) SaveAs(key uint32, src io.Reader) (int64, error) {
+// For all non nil elements of src, data is read until EOF is reached,
+// and corresponding value slots are updated with read data.
+// Slots corresponding to nil or missing elements of src are left untouched.
+//
+// Returns the numbers of bytes read from src elements.
+func (r LazyDB) SaveAs(key uint32, src []io.Reader) ([]int64, error) {
+	counts := make([]int64, len(src))
 	err := r.lazydbLabelExists()
 	if err != nil {
-		return 0, err
+		return counts, err
 	}
 	targetDir, _ := formatPath(key, r.dir, r.keyBase, r.keyDepth)
-	targetPath := joinPathChar(targetDir, formatChar(0))
 	lockFile, err := lockDirForWrite(targetDir, true)
 	if err != nil {
-		return 0, fmt.Errorf("cannot lock: %s", err)
+		return counts, fmt.Errorf("cannot lock: %s", err)
 	}
 	defer lockFile.Close()
-	dst, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
-	if err != nil {
-		return 0, fmt.Errorf("cannot open file '%s': %s", targetPath, err)
+	errs := make([]error, len(src))
+	for idx, src := range src {
+		if src == nil {
+			continue
+		}
+		targetPath := joinPathChar(targetDir, formatChar(uint32(idx)))
+		var dst *os.File
+		dst, errs[idx] = os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+		if errs[idx] != nil {
+			continue
+		}
+		defer dst.Close()
+		counts[idx], errs[idx] = io.Copy(dst, src)
 	}
-	defer dst.Close()
-	count, err := io.Copy(dst, src)
-	if err != nil {
-		return count, fmt.Errorf("cannot copy: %s", err)
+	for _, err := range errs {
+		if err != nil {
+			return counts, err
+		}
 	}
-	return count, nil
+	return counts, nil
 }
 
-// Load retrieves the value associated with a key.
+// Load retrieves values for a given key.
 //
-// Returns the number of bytes written to dst.
-func (r LazyDB) Load(key uint32, dst io.Writer) (int64, error) {
+// All non nil elements of dst are written with data from
+// corresponding value slots.
+//
+// Returns the number of bytes written to dst elements.
+func (r LazyDB) Load(key uint32, dst []io.Writer) ([]int64, error) {
+	counts := make([]int64, len(dst))
 	err := r.lazydbLabelExists()
 	if err != nil {
-		return 0, err
+		return counts, err
 	}
 	targetDir, _ := formatPath(key, r.dir, r.keyBase, r.keyDepth)
-	targetPath := joinPathChar(targetDir, formatChar(0))
 	lockFile, err := lockDirForRead(targetDir)
 	if err != nil {
-		return 0, fmt.Errorf("cannot lock: %s", err)
+		return counts, fmt.Errorf("cannot lock: %s", err)
 	}
 	defer lockFile.Close()
-	file, err := os.Open(targetPath)
-	if err != nil {
-		return 0, fmt.Errorf("cannot open file '%s': %s", targetPath, err)
+	errs := make([]error, len(dst))
+	for idx, dst := range dst {
+		if dst == nil {
+			continue
+		}
+		targetPath := joinPathChar(targetDir, formatChar(uint32(idx)))
+		var src *os.File
+		src, errs[idx] = os.Open(targetPath)
+		if errs[idx] != nil {
+			continue
+		}
+		defer src.Close()
+		counts[idx], errs[idx] = io.Copy(dst, src)
 	}
-	defer file.Close()
-	count, err := io.Copy(dst, file)
-	if err != nil {
-		return count, fmt.Errorf("cannot copy: %s", err)
+	for _, err := range errs {
+		if err != nil {
+			return counts, err
+		}
 	}
-	return count, nil
+	return counts, nil
 }
 
-// Erase erases a key.
+// Erase erases an existent key.
 func (r LazyDB) Erase(key uint32) error {
 	err := r.lazydbLabelExists()
 	if err != nil {
@@ -364,12 +391,13 @@ func (r LazyDB) Exists(key uint32) (bool, error) {
 	return false, fmt.Errorf("cannot check for '%s' existence: %s", targetPath, err)
 }
 
-// Wipe removes a collection from the filesystem.
+// Wipe removes a LazyDB collection from the filesystem.
 //
 // On success, all content of the given directory is cleaned.
 // The directory itself is not removed.
 //
-// Existence of a lazydb collection in the directory is verified prior to cleaning it.
+// Existence of a LazyDB collection in the directory is verified
+// prior to wiping.
 func Wipe(dir string) error {
 	file, err := os.Open(dir)
 	if err != nil {
@@ -486,25 +514,27 @@ func (r LazyDB) FindKey(key uint32, ascending bool) (uint32, error) {
 	return 0, KeyNotFoundError
 }
 
-// Save creates a key with a new value.
-// The key is automatically assigned and guaranteed to be new.
-// Data is read from src until EOF is reached.
+// Save creates a new key and updates it with given values.
+// Key is automatically assigned and guaranteed to be new.
 //
-// Returns the assigned key and the number of bytes read from src.
-func (r LazyDB) Save(src io.Reader) (uint32, int64, error) {
-	var err error
-	err = r.lazydbLabelExists()
+// For all non nil elements of src, data is read until EOF is reached,
+// and corresponding value slots are updated with read data.
+//
+// Returns the assigned key
+// and the number of bytes read from src elements.
+func (r LazyDB) Save(src []io.Reader) (uint32, []int64, error) {
+	counts := make([]int64, len(src))
+	err := r.lazydbLabelExists()
 	if err != nil {
-		return 0, 0, err
+		return 0, counts, err
 	}
 	var targetDir string
-	var targetPath string
 	var key uint32
 	// Find a free key.
 	for {
 		br, err := findFreeKeyFromLevel(newBrokenKey(r.keyDepth), r.keyDepth-1, r.dir, r.keyBase, r.keyDepth)
 		if err != nil {
-			return 0, 0, fmt.Errorf("cannot find free key: %s", err)
+			return 0, counts, fmt.Errorf("cannot find free key: %s", err)
 		}
 		if br == nil {
 			// findFreeKeyFromLevel() is supposed to always find a key,
@@ -515,37 +545,39 @@ func (r LazyDB) Save(src io.Reader) (uint32, int64, error) {
 		if err != nil {
 			// As free keys are searched in ascending order, assume impossible
 			// ones indicate exaustion of key space.
-			return 0, 0, fmt.Errorf("no more keys available")
+			return 0, counts, fmt.Errorf("no more keys available")
 		}
 		targetDir = keyComponentPath(br, 0, r.dir, r.keyDepth)
-		targetPath = joinPathChar(targetDir, formatChar(0))
-		lockFile, err := lockDirForWrite(targetDir, true)
+		lockFile, err := lockDirForWriteNB(targetDir, true)
 		if err != nil {
-			return 0, 0, fmt.Errorf("cannot lock: %s", err)
+			return 0, counts, fmt.Errorf("cannot lock: %s", err)
 		}
-		// Make sure another concurrent Save() didn't get the same key.
-		_, err = os.Stat(targetPath)
-		if err != nil {
-			if !os.IsNotExist(err) {
-				lockFile.Close()
-				return 0, 0, fmt.Errorf("cannot check for '%s' existence: %s", targetPath, err)
-			}
-			// Yay, our key is ours :-)
+		if lockFile != nil {
+			// Got a fresh new key. Yay!!
 			defer lockFile.Close()
 			break
 		}
-		// Another concurrent Save() stole our key! >:-/
-		lockFile.Close()
+		// Another concurrent Save() stole our key :-/
 	}
 	// A free key was found.
-	dst, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
-	if err != nil {
-		return 0, 0, fmt.Errorf("cannot open file '%s': %s", targetPath, err)
+	errs := make([]error, len(src))
+	for idx, src := range src {
+		if src == nil {
+			continue
+		}
+		targetPath := joinPathChar(targetDir, formatChar(uint32(idx)))
+		var dst *os.File
+		dst, errs[idx] = os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+		if errs[idx] != nil {
+			continue
+		}
+		defer dst.Close()
+		counts[idx], errs[idx] = io.Copy(dst, src)
 	}
-	defer dst.Close()
-	count, err := io.Copy(dst, src)
-	if err != nil {
-		return 0, count, fmt.Errorf("cannot copy: %s", err)
+	for _, err := range errs {
+		if err != nil {
+			return key, counts, err
+		}
 	}
-	return key, count, nil
+	return key, counts, nil
 }
