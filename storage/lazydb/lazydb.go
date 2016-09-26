@@ -373,14 +373,14 @@ func (r LazyDB) Erase(key uint32) error {
 	return nil
 }
 
-// Exists verifies if a key exists.
-func (r LazyDB) Exists(key uint32) (bool, error) {
+// Exists verifies if a key-slot pair exists.
+func (r LazyDB) Exists(key uint32, slot uint32) (bool, error) {
 	err := r.lazydbLabelExists()
 	if err != nil {
 		return false, err
 	}
 	targetDir, _ := formatPath(key, r.dir, r.keyBase, r.keyDepth)
-	targetPath := joinPathChar(targetDir, formatChar(0))
+	targetPath := joinPathChar(targetDir, formatChar(slot))
 	_, err = os.Stat(targetPath)
 	if err == nil {
 		return true, nil

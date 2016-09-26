@@ -31,11 +31,16 @@ import "fmt"
 var myPath string
 var howManySaves uint
 var keyBase uint
+var maxSlots uint
+var maxSequenceLength uint
 
 func init() {
 	flag.StringVar(&myPath, "dir", "/tmp/my_data", "path to LazyDB collection")
 	flag.UintVar(&howManySaves, "saves", 1000, "how many keys to create")
 	flag.UintVar(&keyBase, "base", 0, "numeric base of key components")
+	flag.UintVar(&maxSlots, "slots", 32, "maximum number of value slots")
+	flag.UintVar(&maxSequenceLength, "bytes", 1024, "maximum number of bytes per value slot")
+	rand.Seed(time.Now().Unix())
 }
 
 var db lazydb.LazyDB
@@ -44,13 +49,13 @@ func TestInit(t *testing.T) {
 	t.Logf("path to lazydb collection = '%s'", myPath)
 	t.Logf("save test count = %v", howManySaves)
 	t.Logf("numeric base of key components = %v", keyBase)
+	t.Logf("maximum number of value slots = %v", maxSlots)
+	t.Logf("maximum number of bytes per value slot = %v", maxSequenceLength)
 	var err error
 	err = os.MkdirAll(myPath, 0755)
 	if err != nil {
 		t.Fatalf("cannot create directory '%s': %s", myPath, err)
 	}
-	rand.Seed(time.Now().Unix())
-
 }
 
 func TestWipeEmpty(t *testing.T) {
@@ -138,20 +143,31 @@ func TestSaveAs(t *testing.T) {
 
 type savedItem struct {
 	key   uint32
-	value [1]byte
+	value [][]byte
 }
 
 var savedData []savedItem
 
 func TestSaveMany(t *testing.T) {
 	var err error
-	src := make([]io.Reader, 1)
 	savedData = make([]savedItem, howManySaves)
 	savedKeys := make(map[uint32]interface{})
-	for i := uint(0); i < howManySaves; i++ {
-		value := byte(i % 256)
+	for saveIdx := 0; saveIdx < int(howManySaves); saveIdx++ {
+		howManySlots := uint(rand.Float64() * float64(maxSlots))
+		value := make([][]byte, howManySlots)
+		src := make([]io.Reader, howManySlots)
+		for slotIdx := 0; slotIdx < int(howManySlots); slotIdx++ {
+			if rand.Float64() < 0.5 {
+				continue
+			}
+			sequence := make([]byte, int(rand.Float64() * float64(maxSequenceLength)))
+			rand.Read(sequence)
+			value[slotIdx] = sequence
+			src[slotIdx] = bytes.NewReader(value[slotIdx])
+		}
 		var key uint32
-		if i%2 == 0 {
+		var counts []int64
+		if saveIdx%2 == 0 {
 			// test lazydb.SaveAs
 			for {
 				key = rand.Uint32()
@@ -163,38 +179,54 @@ func TestSaveMany(t *testing.T) {
 					break
 				}
 			}
-			src[0] = bytes.NewReader([]byte{value})
-			_, err = db.SaveAs(key, src)
+			counts, err = db.SaveAs(key, src)
 			if err != nil {
 				t.Fatalf("lazydb.SaveAs failed: %s", err)
 			}
 		} else {
 			// test lazydb.Save
-			src[0] = bytes.NewReader([]byte{value})
-			key, _, err = db.Save(src)
+			key, counts, err = db.Save(src)
 			if err != nil {
 				t.Fatalf("lazydb.Save failed: %s", err)
 			}
 		}
+		for slotIdx, sequence := range value {
+			if int64(len(sequence)) != counts[slotIdx] {
+				t.Fatalf("byte count mismatch in key %u slot %i: expected %i received %i", key, slotIdx, len(sequence), counts[slotIdx])
+			}
+		}
 		savedKeys[key] = nil
-		savedData[i].key = key
-		savedData[i].value[0] = value
+		savedData[saveIdx].key = key
+		savedData[saveIdx].value = value
 	}
 }
 
 func TestLoadMany(t *testing.T) {
-	for i := uint(0); i < howManySaves; i++ {
-		key := savedData[i].key
-		loaded := new(bytes.Buffer)
-		dst := make([]io.Writer, 1)
-		dst[0] = loaded
-		_, err := db.Load(key, dst)
+	for _, savedItem := range savedData {
+		key := savedItem.key
+		loaded := make([]*bytes.Buffer, len(savedItem.value))
+		dst := make([]io.Writer, len(loaded))
+		for slotIdx, savedSeq := range savedItem.value {
+			if savedSeq != nil {
+				loaded[slotIdx] = new(bytes.Buffer)
+				dst[slotIdx] = loaded[slotIdx]
+			}
+		}
+		counts, err := db.Load(key, dst)
 		if err != nil {
 			t.Fatalf("lazydb.Load failed: %s", err)
 		}
-		saved := savedData[i].value
-		if loaded.Bytes()[0] != saved[0] {
-			t.Fatalf("save & load mismatch: saved %v loaded %v key %v", saved, loaded, key)
+		for slotIdx, savedSeq := range savedItem.value {
+			if savedSeq == nil {
+				continue
+			}
+			if int64(len(savedSeq)) != counts[slotIdx] {
+				t.Fatalf("byte count mismatch in key %u slot %i: expected %i received %i", key, slotIdx, len(savedSeq), counts[slotIdx])
+			}
+			loadedSeq := loaded[slotIdx].Bytes()
+			if !bytes.Equal(savedSeq, loadedSeq) {
+				t.Fatalf("save & load mismatch in key %u slot %i: saved %v loaded %v", key, slotIdx, savedSeq, loadedSeq)
+			}
 		}
 	}
 }
@@ -276,20 +308,26 @@ func TestErase(t *testing.T) {
 
 func TestExists(t *testing.T) {
 	limit := howManySaves / 10
-	for i := uint(0); i < howManySaves; i++ {
-		key := savedData[i].key
-		exists, err := db.Exists(key)
+	for saveIdx, savedItem := range savedData {
+		key := savedItem.key
+		var slot int = -1
+		for slotIdx, savedSeq := range savedItem.value {
+			if savedSeq == nil {
+				continue
+			}
+			slot = slotIdx
+			break
+		}
+		if slot < 0 {
+			continue
+		}
+		expected := saveIdx >= int(limit)
+		exists, err := db.Exists(key, uint32(slot))
 		if err != nil {
 			t.Fatalf("lazydb.Exists failed: %s", err)
 		}
-		if i < limit {
-			if exists {
-				t.Fatalf("lazydb.Exists mismatch for key %v: %v", key, exists)
-			}
-		} else {
-			if !exists {
-				t.Fatalf("lazydb.Exists mismatch for key %v: %v", key, exists)
-			}
+		if exists != expected {
+			t.Fatalf("lazydb.Exists mismatch for key %v slot %v: expected %v received %v", key, slot, expected, exists)
 		}
 	}
 }
