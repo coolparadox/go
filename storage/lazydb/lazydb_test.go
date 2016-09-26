@@ -342,7 +342,7 @@ func TestWipeNotEmpty(t *testing.T) {
 
 func Example() {
 
-	// Warning: error handling is purposely ignored
+	// error handling purposely ignored
 	// in some places for didactic purposes.
 
 	// Create an empty database
