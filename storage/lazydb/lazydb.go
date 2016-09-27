@@ -271,10 +271,6 @@ type copyResult struct {
 func saveSlot(dir string, slot int, src io.Reader, c chan copyResult) {
 	var result copyResult
 	result.slot = slot
-	if src == nil {
-		c <- result
-		return
-	}
 	targetPath := joinPathChar(dir, formatChar(uint32(slot)))
 	var dst *os.File
 	dst, result.err = os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
@@ -292,10 +288,6 @@ func saveSlot(dir string, slot int, src io.Reader, c chan copyResult) {
 func loadSlot(dir string, slot int, dst io.Writer, c chan copyResult) {
 	var result copyResult
 	result.slot = slot
-	if dst == nil {
-		c <- result
-		return
-	}
 	targetPath := joinPathChar(dir, formatChar(uint32(slot)))
 	var src *os.File
 	src, result.err = os.Open(targetPath)
@@ -331,10 +323,15 @@ func (db LazyDB) SaveAs(key uint32, src []io.Reader) ([]int64, error) {
 	defer lockFile.Close()
 	c := make(chan copyResult)
 	defer close(c)
+	var slotCount int
 	for idx, src := range src {
+		if src == nil {
+			continue
+		}
 		go saveSlot(targetDir, idx, src, c)
+		slotCount++
 	}
-	for range src {
+	for i := 0; i < slotCount; i++ {
 		result := <-c
 		counts[result.slot] = result.count
 		if err != nil {
@@ -366,10 +363,15 @@ func (db LazyDB) Load(key uint32, dst []io.Writer) ([]int64, error) {
 	defer lockFile.Close()
 	c := make(chan copyResult)
 	defer close(c)
+	var slotCount int
 	for idx, dst := range dst {
+		if dst == nil {
+			continue
+		}
 		go loadSlot(targetDir, idx, dst, c)
+		slotCount++
 	}
-	for range dst {
+	for i := 0; i < slotCount; i++ {
 		result := <-c
 		counts[result.slot] = result.count
 		if err != nil {
@@ -600,10 +602,15 @@ func (db LazyDB) Save(src []io.Reader) (uint32, []int64, error) {
 	// A free key was found.
 	c := make(chan copyResult)
 	defer close(c)
+	var slotCount int
 	for idx, src := range src {
+		if src == nil {
+			continue
+		}
 		go saveSlot(targetDir, idx, src, c)
+		slotCount++
 	}
-	for range src {
+	for i := 0; i < slotCount ; i++ {
 		result := <-c
 		counts[result.slot] = result.count
 		if err != nil {
