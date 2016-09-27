@@ -17,10 +17,13 @@
 
 package lazydb
 
-import "fmt"
-import "os"
-import "path"
-import "golang.org/x/sys/unix"
+import (
+	"fmt"
+	"golang.org/x/sys/unix"
+	"os"
+	"path"
+	"syscall"
+)
 
 func openLockFile(dir string, create bool) (*os.File, error) {
 	if create {
@@ -39,35 +42,43 @@ func openLockFile(dir string, create bool) (*os.File, error) {
 
 // lockDir places an advisory lock on a directory.
 // Returns an open file within the directory that holds the lock.
-// The lock may be released by closing the returned file.
+// The lock can be released by closing the returned file.
 func lockDir(dir string, create bool, lockType int) (*os.File, error) {
 	lockFile, err := openLockFile(dir, create)
 	if err != nil {
-		return nil, fmt.Errorf("cannot open lock file: %s", err)
+		return nil, err
 	}
 	err = unix.Flock(int(lockFile.Fd()), lockType)
 	if err != nil {
 		lockFile.Close()
-		return nil, fmt.Errorf("cannot place lock: %s", err)
-	}
-	_, err = os.Stat(dir)
-	if err != nil {
-		lockFile.Close()
-		return nil, fmt.Errorf("cannot stat: %s", err)
+		return nil, err
 	}
 	return lockFile, nil
 }
 
 // lockDirForWrite places an advisory exclusive lock on a directory.
+// If parameter create is false, directory must exist;
+// otherwise it will be created.
 // Returns an open file within the directory that holds the lock.
-// The lock may be released by closing the returned file.
+// The lock can be released by closing the returned file.
 func lockDirForWrite(dir string, create bool) (*os.File, error) {
 	return lockDir(dir, create, unix.LOCK_EX)
 }
 
-// lockDirForRead places an advisory shared lock on a directory.
+// lockDirForWriteNB is a nonblocking version of lockDirForWrite.
+// A non nil returned file indicates success in achieving lock.
+func lockDirForWriteNB(dir string, create bool) (*os.File, error) {
+	file, err := lockDir(dir, create, unix.LOCK_NB|unix.LOCK_EX)
+	errno, ok := err.(syscall.Errno)
+	if ok && errno.Temporary() {
+		err = nil
+	}
+	return file, err
+}
+
+// lockDirForRead places an advisory shared lock on an existent directory.
 // Returns an open file within the directory that holds the lock.
-// The lock may be released by closing the returned file.
+// The lock can be released by closing the returned file.
 func lockDirForRead(dir string) (*os.File, error) {
 	return lockDir(dir, false, unix.LOCK_SH)
 }
