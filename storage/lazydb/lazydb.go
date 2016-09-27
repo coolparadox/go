@@ -259,6 +259,55 @@ func New(dir string, keyBase uint32) (LazyDB, error) {
 	}, nil
 }
 
+// copyResult carries the result of a data transfer operation.
+type copyResult struct {
+	slot  int   // slot id
+	count int64 // how many bytes were transferred
+	err   error // error during transfer
+}
+
+// saveSlot saves data to a slot file
+// and writes the result of the operation to a channel.
+func saveSlot(dir string, slot int, src io.Reader, c chan copyResult) {
+	var result copyResult
+	result.slot = slot
+	if src == nil {
+		c <- result
+		return
+	}
+	targetPath := joinPathChar(dir, formatChar(uint32(slot)))
+	var dst *os.File
+	dst, result.err = os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	if result.err != nil {
+		c <- result
+		return
+	}
+	defer dst.Close()
+	result.count, result.err = io.Copy(dst, src)
+	c <- result
+}
+
+// loadSlot loads data from a slot file
+// and writes the result of the operation to a channel.
+func loadSlot(dir string, slot int, dst io.Writer, c chan copyResult) {
+	var result copyResult
+	result.slot = slot
+	if dst == nil {
+		c <- result
+		return
+	}
+	targetPath := joinPathChar(dir, formatChar(uint32(slot)))
+	var src *os.File
+	src, result.err = os.Open(targetPath)
+	if result.err != nil {
+		c <- result
+		return
+	}
+	defer src.Close()
+	result.count, result.err = io.Copy(dst, src)
+	c <- result
+}
+
 // SaveAs updates value slots for a given key.
 // Key is created if absent.
 //
@@ -266,7 +315,8 @@ func New(dir string, keyBase uint32) (LazyDB, error) {
 // and corresponding slots are updated with read data.
 // Previously existent slots corresponding to nil or missing elements of src are left untouched.
 //
-// Returns the numbers of bytes read from src elements.
+// Returns the numbers of bytes read from src elements,
+// and the first error encountered during operation.
 func (db LazyDB) SaveAs(key uint32, src []io.Reader) ([]int64, error) {
 	counts := make([]int64, len(src))
 	err := db.lazydbLabelExists()
@@ -279,26 +329,20 @@ func (db LazyDB) SaveAs(key uint32, src []io.Reader) ([]int64, error) {
 		return counts, fmt.Errorf("cannot lock: %s", err)
 	}
 	defer lockFile.Close()
-	errs := make([]error, len(src))
+	c := make(chan copyResult)
+	defer close(c)
 	for idx, src := range src {
-		if src == nil {
-			continue
-		}
-		targetPath := joinPathChar(targetDir, formatChar(uint32(idx)))
-		var dst *os.File
-		dst, errs[idx] = os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
-		if errs[idx] != nil {
-			continue
-		}
-		defer dst.Close()
-		counts[idx], errs[idx] = io.Copy(dst, src)
+		go saveSlot(targetDir, idx, src, c)
 	}
-	for _, err := range errs {
+	for range src {
+		result := <-c
+		counts[result.slot] = result.count
 		if err != nil {
-			return counts, err
+			continue
 		}
+		err = result.err
 	}
-	return counts, nil
+	return counts, err
 }
 
 // Load retrieves data from previously saved value slots.
@@ -306,7 +350,8 @@ func (db LazyDB) SaveAs(key uint32, src []io.Reader) ([]int64, error) {
 // All non nil elements of dst are written with data from
 // corresponding slots.
 //
-// Returns the number of bytes written to dst elements.
+// Returns the number of bytes written to dst elements,
+// and the first error encountered during operation.
 func (db LazyDB) Load(key uint32, dst []io.Writer) ([]int64, error) {
 	counts := make([]int64, len(dst))
 	err := db.lazydbLabelExists()
@@ -319,26 +364,20 @@ func (db LazyDB) Load(key uint32, dst []io.Writer) ([]int64, error) {
 		return counts, fmt.Errorf("cannot lock: %s", err)
 	}
 	defer lockFile.Close()
-	errs := make([]error, len(dst))
+	c := make(chan copyResult)
+	defer close(c)
 	for idx, dst := range dst {
-		if dst == nil {
-			continue
-		}
-		targetPath := joinPathChar(targetDir, formatChar(uint32(idx)))
-		var src *os.File
-		src, errs[idx] = os.Open(targetPath)
-		if errs[idx] != nil {
-			continue
-		}
-		defer src.Close()
-		counts[idx], errs[idx] = io.Copy(dst, src)
+		go loadSlot(targetDir, idx, dst, c)
 	}
-	for _, err := range errs {
+	for range dst {
+		result := <-c
+		counts[result.slot] = result.count
 		if err != nil {
-			return counts, err
+			continue
 		}
+		err = result.err
 	}
-	return counts, nil
+	return counts, err
 }
 
 // Erase erases an existent key from the database.
@@ -518,8 +557,9 @@ func (db LazyDB) FindKey(key uint32, ascending bool) (uint32, error) {
 // For all non nil elements of src, data is read until EOF is reached,
 // and corresponding slots are initialized with read data.
 //
-// Returns the assigned key
-// and the number of bytes read from src elements.
+// Returns the assigned key,
+// the number of bytes read from src elements,
+// and the first error encountered during operation.
 func (db LazyDB) Save(src []io.Reader) (uint32, []int64, error) {
 	counts := make([]int64, len(src))
 	err := db.lazydbLabelExists()
@@ -558,24 +598,18 @@ func (db LazyDB) Save(src []io.Reader) (uint32, []int64, error) {
 		// Another concurrent Save() stole our key :-/
 	}
 	// A free key was found.
-	errs := make([]error, len(src))
+	c := make(chan copyResult)
+	defer close(c)
 	for idx, src := range src {
-		if src == nil {
-			continue
-		}
-		targetPath := joinPathChar(targetDir, formatChar(uint32(idx)))
-		var dst *os.File
-		dst, errs[idx] = os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
-		if errs[idx] != nil {
-			continue
-		}
-		defer dst.Close()
-		counts[idx], errs[idx] = io.Copy(dst, src)
+		go saveSlot(targetDir, idx, src, c)
 	}
-	for _, err := range errs {
+	for range src {
+		result := <-c
+		counts[result.slot] = result.count
 		if err != nil {
-			return key, counts, err
+			continue
 		}
+		err = result.err
 	}
-	return key, counts, nil
+	return key, counts, err
 }

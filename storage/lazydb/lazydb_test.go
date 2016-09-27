@@ -160,7 +160,7 @@ func TestSaveMany(t *testing.T) {
 			if rand.Float64() < 0.5 {
 				continue
 			}
-			sequence := make([]byte, int(rand.Float64() * float64(maxSequenceLength)))
+			sequence := make([]byte, int(rand.Float64()*float64(maxSequenceLength)))
 			rand.Read(sequence)
 			value[slotIdx] = sequence
 			src[slotIdx] = bytes.NewReader(value[slotIdx])
