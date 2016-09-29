@@ -46,10 +46,14 @@ Basics
 package keep
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/coolparadox/go/encoding/raw"
 	"github.com/coolparadox/go/storage/lazydb"
+	"io"
 )
+
+const keepLabel = "Keep"
 
 // Keep is a handler to a collection of typed Go data stored in the filesystem.
 type Keep struct {
@@ -79,8 +83,48 @@ func New(placeholder interface{}, dir string) (Keep, error) {
 	if err != nil {
 		return Keep{}, fmt.Errorf("failed to initialize database: %s", err)
 	}
+	_, err = db.FindKey(0, true)
+	if err == lazydb.KeyNotFoundError {
+		// Initialize empty database
+		_, err = db.SaveAs(0, []io.Reader{
+			bytes.NewReader([]byte(keepLabel)),
+			bytes.NewReader([]byte(encoder.Signature())),
+		})
+		if err != nil {
+			return Keep{}, fmt.Errorf("failed to initialize database: %s", err)
+		}
+	} else if err != nil {
+		return Keep{}, fmt.Errorf("failed to query database: %s", err)
+	}
+	ok, err := db.Exists(0, 0)
+	if err != nil {
+		return Keep{}, fmt.Errorf("failed to query database: %s", err)
+	}
+	if !ok {
+		return Keep{}, fmt.Errorf("not a Keep database")
+	}
+	ok, err = db.Exists(0, 1)
+	if err != nil {
+		return Keep{}, fmt.Errorf("failed to query database: %s", err)
+	}
+	if !ok {
+		return Keep{}, fmt.Errorf("not a Keep database")
+	}
+	dbKeepLabel := new(bytes.Buffer)
+	dbSignature := new(bytes.Buffer)
+	_, err = db.Load(0, []io.Writer{dbKeepLabel, dbSignature})
+	if err != nil {
+		return Keep{}, fmt.Errorf("failed to query database: %s", err)
+	}
+	if string(dbKeepLabel.Bytes()) != keepLabel {
+		return Keep{}, fmt.Errorf("not a Keep database")
+	}
+	if string(dbSignature.Bytes()) != encoder.Signature() {
+		return Keep{}, fmt.Errorf("type signature mismatch: expected '%s', found in database '%s'", encoder.Signature, string(dbSignature.Bytes()))
+	}
 	return Keep{
 		encoder: encoder,
 		db:      db,
 	}, nil
 }
+
