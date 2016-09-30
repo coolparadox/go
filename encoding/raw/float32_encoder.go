@@ -25,15 +25,15 @@ func (float32Encoder) Signature() string {
 	return "float32"
 }
 
-func (self float32Encoder) Marshal(w io.Writer) (int, error) {
-	return marshalInteger(uint64(math.Float32bits(*self.store)), 4, w)
+func (e float32Encoder) WriteTo(w io.Writer) (int64, error) {
+	return marshalInteger(uint64(math.Float32bits(*e.store)), 4, w)
 }
 
-func (self float32Encoder) Unmarshal(r io.Reader) (int, error) {
+func (e float32Encoder) ReadFrom(r io.Reader) (int64, error) {
 	value, n, err := unmarshalInteger(r, 4)
 	if err != nil {
 		return n, err
 	}
-	*self.store = math.Float32frombits(uint32(value))
+	*e.store = math.Float32frombits(uint32(value))
 	return n, nil
 }

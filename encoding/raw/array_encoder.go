@@ -16,9 +16,11 @@
 
 package raw
 
-import "io"
-import "reflect"
-import "strconv"
+import (
+	"io"
+	"reflect"
+	"strconv"
+)
 
 type arrayEncoder struct {
 	worker      Encoder
@@ -26,18 +28,18 @@ type arrayEncoder struct {
 	store       reflect.Value
 }
 
-func (self arrayEncoder) Signature() string {
-	return "[" + strconv.Itoa(self.store.Elem().Len()) + "]" + self.worker.Signature()
+func (e arrayEncoder) Signature() string {
+	return "[" + strconv.Itoa(e.store.Elem().Len()) + "]" + e.worker.Signature()
 }
 
-func (self arrayEncoder) Marshal(w io.Writer) (int, error) {
-	var nc int
-	storeVal := self.store.Elem()
+func (e arrayEncoder) WriteTo(w io.Writer) (int64, error) {
+	var nc int64
+	storeVal := e.store.Elem()
 	storeLen := storeVal.Len()
-	workerVal := self.workerStore.Elem()
+	workerVal := e.workerStore.Elem()
 	for i := 0; i < storeLen; i++ {
 		workerVal.Set(storeVal.Index(i))
-		n, err := self.worker.Marshal(w)
+		n, err := e.worker.WriteTo(w)
 		nc += n
 		if err != nil {
 			return nc, err
@@ -46,13 +48,13 @@ func (self arrayEncoder) Marshal(w io.Writer) (int, error) {
 	return nc, nil
 }
 
-func (self arrayEncoder) Unmarshal(r io.Reader) (int, error) {
-	var nc int
-	storeVal := self.store.Elem()
+func (e arrayEncoder) ReadFrom(r io.Reader) (int64, error) {
+	var nc int64
+	storeVal := e.store.Elem()
 	storeLen := storeVal.Len()
-	workerVal := self.workerStore.Elem()
+	workerVal := e.workerStore.Elem()
 	for i := 0; i < storeLen; i++ {
-		n, err := self.worker.Unmarshal(r)
+		n, err := e.worker.ReadFrom(r)
 		nc += n
 		if err != nil {
 			return nc, err

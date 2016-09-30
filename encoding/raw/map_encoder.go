@@ -16,8 +16,10 @@
 
 package raw
 
-import "io"
-import "reflect"
+import (
+	"io"
+	"reflect"
+)
 
 type mapEncoder struct {
 	store           reflect.Value
@@ -27,31 +29,31 @@ type mapEncoder struct {
 	elemWorkerStore reflect.Value
 }
 
-func (self mapEncoder) Signature() string {
-	return "map[" + self.keyWorker.Signature() + "]" + self.elemWorker.Signature()
+func (e mapEncoder) Signature() string {
+	return "map[" + e.keyWorker.Signature() + "]" + e.elemWorker.Signature()
 }
 
-func (self mapEncoder) Marshal(w io.Writer) (int, error) {
-	var nc int
-	storeVal := self.store.Elem()
+func (e mapEncoder) WriteTo(w io.Writer) (int64, error) {
+	var nc int64
+	storeVal := e.store.Elem()
 	storeLen := storeVal.Len()
 	n, err := marshalInteger(uint64(storeLen), 4, w)
 	nc += n
 	if err != nil {
 		return nc, err
 	}
-	keyWorkerVal := self.keyWorkerStore.Elem()
-	elemWorkerVal := self.elemWorkerStore.Elem()
+	keyWorkerVal := e.keyWorkerStore.Elem()
+	elemWorkerVal := e.elemWorkerStore.Elem()
 	keys := storeVal.MapKeys()
 	for _, keyVal := range keys {
 		keyWorkerVal.Set(keyVal)
-		n, err := self.keyWorker.Marshal(w)
+		n, err := e.keyWorker.WriteTo(w)
 		nc += n
 		if err != nil {
 			return nc, err
 		}
 		elemWorkerVal.Set(storeVal.MapIndex(keyVal))
-		n, err = self.elemWorker.Marshal(w)
+		n, err = e.elemWorker.WriteTo(w)
 		nc += n
 		if err != nil {
 			return nc, err
@@ -60,25 +62,25 @@ func (self mapEncoder) Marshal(w io.Writer) (int, error) {
 	return nc, nil
 }
 
-func (self mapEncoder) Unmarshal(r io.Reader) (int, error) {
-	var nc int
+func (e mapEncoder) ReadFrom(r io.Reader) (int64, error) {
+	var nc int64
 	v, n, err := unmarshalInteger(r, 4)
 	nc += n
 	if err != nil {
 		return nc, err
 	}
 	storeLen := int(v)
-	storeVal := reflect.MakeMap(self.store.Elem().Type())
-	self.store.Elem().Set(storeVal)
-	keyWorkerVal := self.keyWorkerStore.Elem()
-	elemWorkerVal := self.elemWorkerStore.Elem()
+	storeVal := reflect.MakeMap(e.store.Elem().Type())
+	e.store.Elem().Set(storeVal)
+	keyWorkerVal := e.keyWorkerStore.Elem()
+	elemWorkerVal := e.elemWorkerStore.Elem()
 	for i := 0; i < storeLen; i++ {
-		n, err := self.keyWorker.Unmarshal(r)
+		n, err := e.keyWorker.ReadFrom(r)
 		nc += n
 		if err != nil {
 			return nc, err
 		}
-		n, err = self.elemWorker.Unmarshal(r)
+		n, err = e.elemWorker.ReadFrom(r)
 		nc += n
 		if err != nil {
 			return nc, err

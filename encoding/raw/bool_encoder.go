@@ -24,19 +24,19 @@ func (boolEncoder) Signature() string {
 	return "bool"
 }
 
-func (self boolEncoder) Marshal(w io.Writer) (int, error) {
+func (e boolEncoder) WriteTo(w io.Writer) (int64, error) {
 	var answer uint8
-	if *self.store {
+	if *e.store {
 		answer = 0xFF
 	}
 	return marshalInteger(uint64(answer), 1, w)
 }
 
-func (self boolEncoder) Unmarshal(r io.Reader) (int, error) {
+func (e boolEncoder) ReadFrom(r io.Reader) (int64, error) {
 	value, n, err := unmarshalInteger(r, 1)
 	if err != nil {
 		return n, err
 	}
-	*self.store = value != 0
+	*e.store = value != 0
 	return n, nil
 }

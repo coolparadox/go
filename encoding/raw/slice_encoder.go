@@ -25,23 +25,23 @@ type sliceEncoder struct {
 	workerStore reflect.Value
 }
 
-func (self sliceEncoder) Signature() string {
-	return "[]" + self.worker.Signature()
+func (e sliceEncoder) Signature() string {
+	return "[]" + e.worker.Signature()
 }
 
-func (self sliceEncoder) Marshal(w io.Writer) (int, error) {
-	var nc int
-	storeVal := self.store.Elem()
+func (e sliceEncoder) WriteTo(w io.Writer) (int64, error) {
+	var nc int64
+	storeVal := e.store.Elem()
 	storeLen := storeVal.Len()
 	n, err := marshalInteger(uint64(storeLen), 4, w)
 	nc += n
 	if err != nil {
 		return nc, err
 	}
-	workerVal := self.workerStore.Elem()
+	workerVal := e.workerStore.Elem()
 	for i := 0; i < storeLen; i++ {
 		workerVal.Set(storeVal.Index(i))
-		n, err := self.worker.Marshal(w)
+		n, err := e.worker.WriteTo(w)
 		nc += n
 		if err != nil {
 			return nc, err
@@ -50,19 +50,19 @@ func (self sliceEncoder) Marshal(w io.Writer) (int, error) {
 	return nc, nil
 }
 
-func (self sliceEncoder) Unmarshal(r io.Reader) (int, error) {
-	var nc int
+func (e sliceEncoder) ReadFrom(r io.Reader) (int64, error) {
+	var nc int64
 	v, n, err := unmarshalInteger(r, 4)
 	nc += n
 	if err != nil {
 		return nc, err
 	}
 	storeLen := int(v)
-	storeVal := reflect.MakeSlice(self.store.Elem().Type(), storeLen, storeLen)
-	self.store.Elem().Set(storeVal)
-	workerVal := self.workerStore.Elem()
+	storeVal := reflect.MakeSlice(e.store.Elem().Type(), storeLen, storeLen)
+	e.store.Elem().Set(storeVal)
+	workerVal := e.workerStore.Elem()
 	for i := 0; i < storeLen; i++ {
-		n, err := self.worker.Unmarshal(r)
+		n, err := e.worker.ReadFrom(r)
 		nc += n
 		if err != nil {
 			return nc, err

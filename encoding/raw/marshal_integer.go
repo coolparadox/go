@@ -18,25 +18,30 @@ package raw
 
 import "io"
 
-func marshalInteger(value uint64, depth int, w io.Writer) (int, error) {
+// marshalInteger marshals an unsigned integer number of a given octet depth.
+// Returns the number of bytes written.
+func marshalInteger(value uint64, depth int, w io.Writer) (int64, error) {
 	sequence := make([]byte, depth, depth)
 	for i := 0; i < depth; i++ {
 		sequence[i] = byte(value % 0x100)
 		value /= 0x100
 	}
-	return w.Write(sequence)
+	n, err := w.Write(sequence)
+	return int64(n), err
 }
 
-func unmarshalInteger(r io.Reader, depth int) (uint64, int, error) {
+// unmarshalInteger unmarshals an unsigned integer number of a given octet depth.
+// Returns the unmarshaled value and the number of bytes read.
+func unmarshalInteger(r io.Reader, depth int) (uint64, int64, error) {
 	sequence := make([]byte, depth, depth)
 	n, err := r.Read(sequence)
 	if err != nil {
-		return 0, n, err
+		return 0, int64(n), err
 	}
 	var answer uint64
 	for i := 0; i < depth; i++ {
 		answer *= 0x100
 		answer += uint64(sequence[depth-1-i])
 	}
-	return answer, n, nil
+	return answer, int64(n), nil
 }
