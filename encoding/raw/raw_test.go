@@ -27,6 +27,8 @@ import (
 	"time"
 )
 
+const bufLen = 256
+
 func init() {
 	rand.Seed(time.Now().UnixNano())
 }
@@ -103,23 +105,32 @@ func TestUint8Encoder(t *testing.T) {
 		t.Fatalf("signature mismatch: expected '%s', received '%s'", expected_signature, signature)
 	}
 	t.Logf("myData type signature = %s", signature)
-	var b bytes.Buffer
 	myData = random_uint8()
-	_, err = encoder.WriteTo(&b)
+	b := make([]byte, bufLen)
+	n, err := encoder.Read(b)
 	if err != nil {
-		t.Fatalf("WriteTo() failed: %s", err)
+		t.Fatalf("Read() failed: %s", err)
 	}
-	t.Logf("marshal %v --> %v", myData, b.Bytes())
-	myData2 := myData
+	if n <= 0 {
+		t.Fatalf("zero received marshal length")
+	}
+	t.Logf("marshal %v --> %v", myData, b[:n])
+	backupData := myData
+	backupN := n
 	myData = 0
-	var n int64
-	n, err = encoder.ReadFrom(&b)
+	n, err = encoder.Write(b)
 	if err != nil {
-		t.Fatalf("ReadFrom() failed: %s", err)
+		t.Fatalf("Write() failed: %s", err)
+	}
+	if n <= 0 {
+		t.Fatalf("zero received unmarshal length")
+	}
+	if (n != backupN) {
+		t.Fatalf("received byte lenghts mismatch: marshal %v, unmarshal %v", backupN, n)
 	}
 	t.Logf("unmarshal %v bytes --> %v", n, myData)
-	if !reflect.DeepEqual(myData, myData2) {
-		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
+	if !reflect.DeepEqual(myData, backupData) {
+		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", backupData, myData)
 	}
 }
 
@@ -135,23 +146,32 @@ func TestInt8Encoder(t *testing.T) {
 		t.Fatalf("signature mismatch: expected '%s', received '%s'", expected_signature, signature)
 	}
 	t.Logf("myData type signature = %s", signature)
-	var b bytes.Buffer
 	myData = random_int8()
-	_, err = encoder.WriteTo(&b)
+	b := make([]byte, bufLen)
+	n, err := encoder.Read(b)
 	if err != nil {
-		t.Fatalf("WriteTo() failed: %s", err)
+		t.Fatalf("Read() failed: %s", err)
 	}
-	t.Logf("marshal %v --> %v", myData, b.Bytes())
-	myData2 := myData
+	if n <= 0 {
+		t.Fatalf("zero received marshal length")
+	}
+	t.Logf("marshal %v --> %v", myData, b[:n])
+	backupData := myData
+	backupN := n
 	myData = 0
-	var n int64
-	n, err = encoder.ReadFrom(&b)
+	n, err = encoder.Write(b)
 	if err != nil {
-		t.Fatalf("ReadFrom() failed: %s", err)
+		t.Fatalf("Write() failed: %s", err)
+	}
+	if n <= 0 {
+		t.Fatalf("zero received unmarshal length")
+	}
+	if (n != backupN) {
+		t.Fatalf("received byte lenghts mismatch: marshal %v, unmarshal %v", backupN, n)
 	}
 	t.Logf("unmarshal %v bytes --> %v", n, myData)
-	if !reflect.DeepEqual(myData, myData2) {
-		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
+	if !reflect.DeepEqual(myData, backupData) {
+		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", backupData, myData)
 	}
 }
 
@@ -167,23 +187,32 @@ func TestUint16Encoder(t *testing.T) {
 		t.Fatalf("signature mismatch: expected '%s', received '%s'", expected_signature, signature)
 	}
 	t.Logf("myData type signature = %s", signature)
-	var b bytes.Buffer
 	myData = random_uint16()
-	_, err = encoder.WriteTo(&b)
+	b := make([]byte, bufLen)
+	n, err := encoder.Read(b)
 	if err != nil {
-		t.Fatalf("WriteTo() failed: %s", err)
+		t.Fatalf("Read() failed: %s", err)
 	}
-	t.Logf("marshal %v --> %v", myData, b.Bytes())
-	myData2 := myData
+	if n <= 0 {
+		t.Fatalf("zero received marshal length")
+	}
+	t.Logf("marshal %v --> %v", myData, b[:n])
+	backupData := myData
+	backupN := n
 	myData = 0
-	var n int64
-	n, err = encoder.ReadFrom(&b)
+	n, err = encoder.Write(b)
 	if err != nil {
-		t.Fatalf("ReadFrom() failed: %s", err)
+		t.Fatalf("Write() failed: %s", err)
+	}
+	if n <= 0 {
+		t.Fatalf("zero received unmarshal length")
+	}
+	if (n != backupN) {
+		t.Fatalf("received byte lenghts mismatch: marshal %v, unmarshal %v", backupN, n)
 	}
 	t.Logf("unmarshal %v bytes --> %v", n, myData)
-	if !reflect.DeepEqual(myData, myData2) {
-		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
+	if !reflect.DeepEqual(myData, backupData) {
+		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", backupData, myData)
 	}
 }
 
@@ -199,23 +228,32 @@ func TestInt16Encoder(t *testing.T) {
 		t.Fatalf("signature mismatch: expected '%s', received '%s'", expected_signature, signature)
 	}
 	t.Logf("myData type signature = %s", signature)
-	var b bytes.Buffer
 	myData = random_int16()
-	_, err = encoder.WriteTo(&b)
+	b := make([]byte, bufLen)
+	n, err := encoder.Read(b)
 	if err != nil {
-		t.Fatalf("WriteTo() failed: %s", err)
+		t.Fatalf("Read() failed: %s", err)
 	}
-	t.Logf("marshal %v --> %v", myData, b.Bytes())
-	myData2 := myData
+	if n <= 0 {
+		t.Fatalf("zero received marshal length")
+	}
+	t.Logf("marshal %v --> %v", myData, b[:n])
+	backupData := myData
+	backupN := n
 	myData = 0
-	var n int64
-	n, err = encoder.ReadFrom(&b)
+	n, err = encoder.Write(b)
 	if err != nil {
-		t.Fatalf("ReadFrom() failed: %s", err)
+		t.Fatalf("Write() failed: %s", err)
+	}
+	if n <= 0 {
+		t.Fatalf("zero received unmarshal length")
+	}
+	if (n != backupN) {
+		t.Fatalf("received byte lenghts mismatch: marshal %v, unmarshal %v", backupN, n)
 	}
 	t.Logf("unmarshal %v bytes --> %v", n, myData)
-	if !reflect.DeepEqual(myData, myData2) {
-		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
+	if !reflect.DeepEqual(myData, backupData) {
+		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", backupData, myData)
 	}
 }
 
@@ -231,23 +269,32 @@ func TestUint32Encoder(t *testing.T) {
 		t.Fatalf("signature mismatch: expected '%s', received '%s'", expected_signature, signature)
 	}
 	t.Logf("myData type signature = %s", signature)
-	var b bytes.Buffer
 	myData = random_uint32()
-	_, err = encoder.WriteTo(&b)
+	b := make([]byte, bufLen)
+	n, err := encoder.Read(b)
 	if err != nil {
-		t.Fatalf("WriteTo() failed: %s", err)
+		t.Fatalf("Read() failed: %s", err)
 	}
-	t.Logf("marshal %v --> %v", myData, b.Bytes())
-	myData2 := myData
+	if n <= 0 {
+		t.Fatalf("zero received marshal length")
+	}
+	t.Logf("marshal %v --> %v", myData, b[:n])
+	backupData := myData
+	backupN := n
 	myData = 0
-	var n int64
-	n, err = encoder.ReadFrom(&b)
+	n, err = encoder.Write(b)
 	if err != nil {
-		t.Fatalf("ReadFrom() failed: %s", err)
+		t.Fatalf("Write() failed: %s", err)
+	}
+	if n <= 0 {
+		t.Fatalf("zero received unmarshal length")
+	}
+	if (n != backupN) {
+		t.Fatalf("received byte lenghts mismatch: marshal %v, unmarshal %v", backupN, n)
 	}
 	t.Logf("unmarshal %v bytes --> %v", n, myData)
-	if !reflect.DeepEqual(myData, myData2) {
-		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
+	if !reflect.DeepEqual(myData, backupData) {
+		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", backupData, myData)
 	}
 }
 
@@ -263,23 +310,32 @@ func TestInt32Encoder(t *testing.T) {
 		t.Fatalf("signature mismatch: expected '%s', received '%s'", expected_signature, signature)
 	}
 	t.Logf("myData type signature = %s", signature)
-	var b bytes.Buffer
 	myData = random_int32()
-	_, err = encoder.WriteTo(&b)
+	b := make([]byte, bufLen)
+	n, err := encoder.Read(b)
 	if err != nil {
-		t.Fatalf("WriteTo() failed: %s", err)
+		t.Fatalf("Read() failed: %s", err)
 	}
-	t.Logf("marshal %v --> %v", myData, b.Bytes())
-	myData2 := myData
+	if n <= 0 {
+		t.Fatalf("zero received marshal length")
+	}
+	t.Logf("marshal %v --> %v", myData, b[:n])
+	backupData := myData
+	backupN := n
 	myData = 0
-	var n int64
-	n, err = encoder.ReadFrom(&b)
+	n, err = encoder.Write(b)
 	if err != nil {
-		t.Fatalf("ReadFrom() failed: %s", err)
+		t.Fatalf("Write() failed: %s", err)
+	}
+	if n <= 0 {
+		t.Fatalf("zero received unmarshal length")
+	}
+	if (n != backupN) {
+		t.Fatalf("received byte lenghts mismatch: marshal %v, unmarshal %v", backupN, n)
 	}
 	t.Logf("unmarshal %v bytes --> %v", n, myData)
-	if !reflect.DeepEqual(myData, myData2) {
-		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
+	if !reflect.DeepEqual(myData, backupData) {
+		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", backupData, myData)
 	}
 }
 
@@ -295,23 +351,32 @@ func TestUint64Encoder(t *testing.T) {
 		t.Fatalf("signature mismatch: expected '%s', received '%s'", expected_signature, signature)
 	}
 	t.Logf("myData type signature = %s", signature)
-	var b bytes.Buffer
 	myData = random_uint64()
-	_, err = encoder.WriteTo(&b)
+	b := make([]byte, bufLen)
+	n, err := encoder.Read(b)
 	if err != nil {
-		t.Fatalf("WriteTo() failed: %s", err)
+		t.Fatalf("Read() failed: %s", err)
 	}
-	t.Logf("marshal %v --> %v", myData, b.Bytes())
-	myData2 := myData
+	if n <= 0 {
+		t.Fatalf("zero received marshal length")
+	}
+	t.Logf("marshal %v --> %v", myData, b[:n])
+	backupData := myData
+	backupN := n
 	myData = 0
-	var n int64
-	n, err = encoder.ReadFrom(&b)
+	n, err = encoder.Write(b)
 	if err != nil {
-		t.Fatalf("ReadFrom() failed: %s", err)
+		t.Fatalf("Write() failed: %s", err)
+	}
+	if n <= 0 {
+		t.Fatalf("zero received unmarshal length")
+	}
+	if (n != backupN) {
+		t.Fatalf("received byte lenghts mismatch: marshal %v, unmarshal %v", backupN, n)
 	}
 	t.Logf("unmarshal %v bytes --> %v", n, myData)
-	if !reflect.DeepEqual(myData, myData2) {
-		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
+	if !reflect.DeepEqual(myData, backupData) {
+		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", backupData, myData)
 	}
 }
 
@@ -327,23 +392,32 @@ func TestInt64Encoder(t *testing.T) {
 		t.Fatalf("signature mismatch: expected '%s', received '%s'", expected_signature, signature)
 	}
 	t.Logf("myData type signature = %s", signature)
-	var b bytes.Buffer
 	myData = random_int64()
-	_, err = encoder.WriteTo(&b)
+	b := make([]byte, bufLen)
+	n, err := encoder.Read(b)
 	if err != nil {
-		t.Fatalf("WriteTo() failed: %s", err)
+		t.Fatalf("Read() failed: %s", err)
 	}
-	t.Logf("marshal %v --> %v", myData, b.Bytes())
-	myData2 := myData
+	if n <= 0 {
+		t.Fatalf("zero received marshal length")
+	}
+	t.Logf("marshal %v --> %v", myData, b[:n])
+	backupData := myData
+	backupN := n
 	myData = 0
-	var n int64
-	n, err = encoder.ReadFrom(&b)
+	n, err = encoder.Write(b)
 	if err != nil {
-		t.Fatalf("ReadFrom() failed: %s", err)
+		t.Fatalf("Write() failed: %s", err)
+	}
+	if n <= 0 {
+		t.Fatalf("zero received unmarshal length")
+	}
+	if (n != backupN) {
+		t.Fatalf("received byte lenghts mismatch: marshal %v, unmarshal %v", backupN, n)
 	}
 	t.Logf("unmarshal %v bytes --> %v", n, myData)
-	if !reflect.DeepEqual(myData, myData2) {
-		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", myData2, myData)
+	if !reflect.DeepEqual(myData, backupData) {
+		t.Fatalf("marshal / unmarshal mismatch: expected %v, received %v", backupData, myData)
 	}
 }
 
