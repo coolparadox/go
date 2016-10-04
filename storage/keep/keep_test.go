@@ -19,6 +19,7 @@ package keep_test
 
 import (
 	"flag"
+	"fmt"
 	"github.com/coolparadox/go/storage/keep"
 	"os"
 	"testing"
@@ -170,4 +171,120 @@ func TestFindPos(t *testing.T) {
 	if err != keep.PosNotFoundError {
 		t.Fatalf("FindPos error mismatch: expected PosNotFoundError, received %v", err)
 	}
+}
+
+func Example() {
+
+	// Let's say we want to keep a collection of strings.
+	// Define a variable to be a placeholder for accessing
+	// collection's values
+	var myData string
+
+	// Create a collection for your data
+	os.RemoveAll("/tmp/my_data")
+	os.MkdirAll("/tmp/my_data", 0755)
+	k, err := keep.New(&myData, "/tmp/my_data")
+	if err != nil {
+		panic(err)
+	}
+
+	// Save values in new positions
+	myData = "goodbye"
+	k1, _ := k.Save()
+	myData = "cruel"
+	k2, _ := k.Save()
+	myData = "world"
+	k3, _ := k.Save()
+
+	// Update, remove
+	myData = "hello"
+	k.SaveAs(k1)
+	k.Erase(k2)
+	myData = "folks"
+	k.SaveAs(k3)
+
+	// Loop though positions
+	pos, err := k.FindPos(1, true)
+	for err == nil {
+		// Retrieve value
+		k.Load(pos)
+		fmt.Printf("position %v: %s\n", pos, myData)
+		if pos >= keep.MaxPos {
+			// Maximum position reached
+			break
+		}
+		// Find next filled position
+		pos, err = k.FindPos(pos+1, true)
+	}
+	if err != nil && err != keep.PosNotFoundError {
+		// An abnormal error occurred
+		panic(err)
+	}
+
+	// Output:
+	// position 1: hello
+	// position 3: folks
+
+}
+
+func Example_embedding() {
+
+	// Let's say we want to keep a collection of strings.
+	type MyType struct {
+		V string
+	}
+
+	// Embedding allows accessing placeholder and
+	// manipulating the collection from the same variable.
+	var myData struct {
+		MyType
+		keep.Keep
+	}
+
+	// Create a collection for your data
+	os.RemoveAll("/tmp/my_data")
+	os.MkdirAll("/tmp/my_data", 0755)
+	var err error
+	myData.Keep, err = keep.New(&myData.MyType, "/tmp/my_data")
+	if err != nil {
+		panic(err)
+	}
+
+	// Save values in new positions
+	myData.V = "goodbye"
+	k1, _ := myData.Save()
+	myData.V = "cruel"
+	k2, _ := myData.Save()
+	myData.V = "world"
+	k3, _ := myData.Save()
+
+	// Update, remove
+	myData.V = "hello"
+	myData.SaveAs(k1)
+	myData.Erase(k2)
+	myData.V = "folks"
+	myData.SaveAs(k3)
+
+	// Loop though positions
+	pos, err := myData.FindPos(1, true)
+	for err == nil {
+		// Retrieve value
+		myData.Load(pos)
+		fmt.Printf("position %v: %s\n", pos, myData.V)
+		if pos >= keep.MaxPos {
+			// Maximum position reached
+			break
+		}
+		// Find next filled position
+		pos, err = myData.FindPos(pos+1, true)
+	}
+	if err != nil && err != keep.PosNotFoundError {
+		// An abnormal error occurred
+		panic(err)
+	}
+
+	// Output:
+	// position 1: hello
+	// position 3: folks
+
 }

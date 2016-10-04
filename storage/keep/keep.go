@@ -53,7 +53,14 @@ import (
 	"io"
 )
 
+// keepLabel is used by verifying if a database contains a Keep collection.
 const keepLabel = "Keep"
+
+// MinPos and MaxPos are the limits for positions in a Keep collection.
+const (
+	MinPos = 1
+	MaxPos = 0xFFFFFFFF
+)
 
 // Keep is a handler to a collection of typed Go data stored in the filesystem.
 type Keep struct {
@@ -120,7 +127,7 @@ func New(placeholder interface{}, dir string) (Keep, error) {
 		return Keep{}, fmt.Errorf("not a Keep database")
 	}
 	if string(dbSignature.Bytes()) != encoder.Signature() {
-		return Keep{}, fmt.Errorf("type signature mismatch: expected '%s', found in database '%s'", encoder.Signature, string(dbSignature.Bytes()))
+		return Keep{}, fmt.Errorf("type signature mismatch: expected '%s', found in database '%s'", encoder.Signature(), string(dbSignature.Bytes()))
 	}
 	return Keep{
 		encoder: encoder,
