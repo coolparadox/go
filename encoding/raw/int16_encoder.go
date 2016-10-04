@@ -24,25 +24,25 @@ func (int16Encoder) Signature() string {
 	return "int16"
 }
 
-func (self int16Encoder) Marshal(w io.Writer) (int, error) {
+func (e int16Encoder) WriteTo(w io.Writer) (int64, error) {
 	var aux uint16
-	if *self.store >= 0 {
-		aux = uint16(*self.store) + 1 + 0x7FFF
+	if *e.store >= 0 {
+		aux = uint16(*e.store) + 1 + 0x7FFF
 	} else {
-		aux = uint16(*self.store + 1 + 0x7FFF)
+		aux = uint16(*e.store + 1 + 0x7FFF)
 	}
 	return marshalInteger(uint64(aux), 2, w)
 }
 
-func (self int16Encoder) Unmarshal(r io.Reader) (int, error) {
+func (e int16Encoder) ReadFrom(r io.Reader) (int64, error) {
 	value, n, err := unmarshalInteger(r, 2)
 	if err != nil {
 		return n, err
 	}
 	if value >= (1 + 0x7FFF) {
-		*self.store = int16(value - 1 - 0x7FFF)
+		*e.store = int16(value - 1 - 0x7FFF)
 	} else {
-		*self.store = int16(value) - 1 - 0x7FFF
+		*e.store = int16(value) - 1 - 0x7FFF
 	}
 	return n, nil
 }

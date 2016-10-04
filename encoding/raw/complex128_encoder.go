@@ -25,20 +25,20 @@ func (complex128Encoder) Signature() string {
 	return "complex128"
 }
 
-func (self complex128Encoder) Marshal(w io.Writer) (int, error) {
-	var nc int
-	n, err := marshalInteger(math.Float64bits(real(*self.store)), 8, w)
+func (e complex128Encoder) WriteTo(w io.Writer) (int64, error) {
+	var nc int64
+	n, err := marshalInteger(math.Float64bits(real(*e.store)), 8, w)
 	nc += n
 	if err != nil {
 		return nc, err
 	}
-	n, err = marshalInteger(math.Float64bits(imag(*self.store)), 8, w)
+	n, err = marshalInteger(math.Float64bits(imag(*e.store)), 8, w)
 	nc += n
 	return nc, err
 }
 
-func (self complex128Encoder) Unmarshal(r io.Reader) (int, error) {
-	var nc int
+func (e complex128Encoder) ReadFrom(r io.Reader) (int64, error) {
+	var nc int64
 	vr, n, err := unmarshalInteger(r, 8)
 	nc += n
 	if err != nil {
@@ -49,6 +49,6 @@ func (self complex128Encoder) Unmarshal(r io.Reader) (int, error) {
 	if err != nil {
 		return nc, err
 	}
-	*self.store = complex(math.Float64frombits(vr), math.Float64frombits(vi))
+	*e.store = complex(math.Float64frombits(vr), math.Float64frombits(vi))
 	return nc, nil
 }

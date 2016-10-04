@@ -24,16 +24,16 @@ func (stringEncoder) Signature() string {
 	return "string"
 }
 
-func (self stringEncoder) Marshal(w io.Writer) (int, error) {
-	var nc int
-	storeLen := len(*self.store)
+func (e stringEncoder) WriteTo(w io.Writer) (int64, error) {
+	var nc int64
+	storeLen := len(*e.store)
 	n, err := marshalInteger(uint64(storeLen), 4, w)
 	nc += n
 	if err != nil {
 		return nc, err
 	}
 	for i := 0; i < storeLen; i++ {
-		n, err := marshalInteger(uint64((*self.store)[i]), 1, w)
+		n, err := marshalInteger(uint64((*e.store)[i]), 1, w)
 		nc += n
 		if err != nil {
 			return nc, err
@@ -42,8 +42,8 @@ func (self stringEncoder) Marshal(w io.Writer) (int, error) {
 	return nc, nil
 }
 
-func (self stringEncoder) Unmarshal(r io.Reader) (int, error) {
-	var nc int
+func (e stringEncoder) ReadFrom(r io.Reader) (int64, error) {
+	var nc int64
 	v, n, err := unmarshalInteger(r, 4)
 	nc += n
 	if err != nil {
@@ -59,6 +59,6 @@ func (self stringEncoder) Unmarshal(r io.Reader) (int, error) {
 		}
 		answer[i] = uint8(v)
 	}
-	*self.store = string(answer)
+	*e.store = string(answer)
 	return nc, nil
 }

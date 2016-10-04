@@ -24,15 +24,15 @@ func (uint32Encoder) Signature() string {
 	return "uint32"
 }
 
-func (self uint32Encoder) Marshal(w io.Writer) (int, error) {
-	return marshalInteger(uint64(*self.store), 4, w)
+func (e uint32Encoder) WriteTo(w io.Writer) (int64, error) {
+	return marshalInteger(uint64(*e.store), 4, w)
 }
 
-func (self uint32Encoder) Unmarshal(r io.Reader) (int, error) {
+func (e uint32Encoder) ReadFrom(r io.Reader) (int64, error) {
 	value, n, err := unmarshalInteger(r, 4)
 	if err != nil {
 		return n, err
 	}
-	*self.store = uint32(value)
+	*e.store = uint32(value)
 	return n, nil
 }

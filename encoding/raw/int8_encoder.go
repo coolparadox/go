@@ -24,25 +24,25 @@ func (int8Encoder) Signature() string {
 	return "int8"
 }
 
-func (self int8Encoder) Marshal(w io.Writer) (int, error) {
+func (e int8Encoder) WriteTo(w io.Writer) (int64, error) {
 	var aux uint8
-	if *self.store >= 0 {
-		aux = uint8(*self.store) + 1 + 0x7F
+	if *e.store >= 0 {
+		aux = uint8(*e.store) + 1 + 0x7F
 	} else {
-		aux = uint8(*self.store + 1 + 0x7F)
+		aux = uint8(*e.store + 1 + 0x7F)
 	}
 	return marshalInteger(uint64(aux), 1, w)
 }
 
-func (self int8Encoder) Unmarshal(r io.Reader) (int, error) {
+func (e int8Encoder) ReadFrom(r io.Reader) (int64, error) {
 	value, n, err := unmarshalInteger(r, 1)
 	if err != nil {
 		return n, err
 	}
 	if value >= (1 + 0x7F) {
-		*self.store = int8(value - 1 - 0x7F)
+		*e.store = int8(value - 1 - 0x7F)
 	} else {
-		*self.store = int8(value) - 1 - 0x7F
+		*e.store = int8(value) - 1 - 0x7F
 	}
 	return n, nil
 }

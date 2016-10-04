@@ -20,22 +20,22 @@ import "io"
 
 type structEncoder struct{ store []Encoder }
 
-func (self structEncoder) Signature() string {
+func (e structEncoder) Signature() string {
 	ans := "struct {"
-	for i := 0; i < len(self.store); i++ {
+	for i := 0; i < len(e.store); i++ {
 		if i > 0 {
 			ans += ";"
 		}
-		ans += " " + self.store[i].Signature()
+		ans += " " + e.store[i].Signature()
 	}
 	ans += " }"
 	return ans
 }
 
-func (self structEncoder) Marshal(w io.Writer) (int, error) {
-	var count int
-	for i := 0; i < len(self.store); i++ {
-		n, err := self.store[i].Marshal(w)
+func (e structEncoder) WriteTo(w io.Writer) (int64, error) {
+	var count int64
+	for i := 0; i < len(e.store); i++ {
+		n, err := e.store[i].WriteTo(w)
 		count += n
 		if err != nil {
 			return count, err
@@ -44,10 +44,10 @@ func (self structEncoder) Marshal(w io.Writer) (int, error) {
 	return count, nil
 }
 
-func (self structEncoder) Unmarshal(r io.Reader) (int, error) {
-	var count int
-	for i := 0; i < len(self.store); i++ {
-		n, err := self.store[i].Unmarshal(r)
+func (e structEncoder) ReadFrom(r io.Reader) (int64, error) {
+	var count int64
+	for i := 0; i < len(e.store); i++ {
+		n, err := e.store[i].ReadFrom(r)
 		count += n
 		if err != nil {
 			return count, err
