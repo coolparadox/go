@@ -190,3 +190,15 @@ func (k Keep) Save() (uint32, error) {
 	}
 	return pos, nil
 }
+
+// Erase erases data of a given position in the collection.
+func (k Keep) Erase(pos uint32) error {
+	ok, err := k.Exists(pos)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return nil
+	}
+	return k.db.Erase(pos)
+}

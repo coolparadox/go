@@ -134,3 +134,13 @@ func TestSave(t *testing.T) {
 		t.Fatalf("Load mismatch: expected 10234, received %s", myData.X)
 	}
 }
+
+func TestErase(t *testing.T) {
+	var err error
+	TestExistsTrue(t)
+	err = myData.Erase(2)
+	if err != nil {
+		t.Fatalf("Erase failed: %s", err)
+	}
+	TestExistsFalse(t)
+}
