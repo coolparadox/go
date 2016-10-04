@@ -142,7 +142,28 @@ func (k Keep) SaveAs(pos uint32) error {
 	}
 	_, err := k.db.SaveAs(pos, []io.Reader{k.encoder})
 	if err != nil {
-		return fmt.Errorf("cannot save: %s", err)
+		return fmt.Errorf("cannot save position %v: %s", pos, err)
+	}
+	return nil
+}
+
+// Load restores the contents of the placeholder variable (see New)
+// with data from a given position in the collection.
+// Position must have been previously filled by Save or SaveAs.
+func (k Keep) Load(pos uint32) error {
+	if pos == 0 {
+		return fmt.Errorf("position must be greater than zero")
+	}
+	ok, err := k.db.Exists(pos, 0)
+	if err != nil {
+		return fmt.Errorf("cannot check position %v for existence: %s", pos, err)
+	}
+	if !ok {
+		return fmt.Errorf("position %v does not exist", pos)
+	}
+	_, err = k.db.Load(pos, []io.Writer{k.encoder})
+	if err != nil {
+		return fmt.Errorf("cannot load position %v: %s", pos, err)
 	}
 	return nil
 }

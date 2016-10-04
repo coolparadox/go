@@ -19,9 +19,9 @@ package keep_test
 
 import (
 	"flag"
+	"github.com/coolparadox/go/storage/keep"
 	"os"
 	"testing"
-	"github.com/coolparadox/go/storage/keep"
 )
 
 var myPath string
@@ -74,9 +74,21 @@ func TestSignature(t *testing.T) {
 
 func TestSaveAs(t *testing.T) {
 	var err error
-	myData.X= 8765
+	myData.X = 8765
 	err = myData.SaveAs(1)
 	if err != nil {
 		t.Fatalf("keep.SaveAs failed: %s", err)
+	}
+}
+
+func TestLoad(t *testing.T) {
+	var err error
+	myData.X = 0
+	err = myData.Load(1)
+	if err != nil {
+		t.Fatalf("keep.Load failed: %s", err)
+	}
+	if myData.X != 8765 {
+		t.Fatalf("Load mismatch: expected 8765, received %s", myData.X)
 	}
 }
