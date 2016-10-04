@@ -23,6 +23,7 @@ import (
 	"github.com/coolparadox/go/storage/keep"
 	"os"
 	"testing"
+	"time"
 )
 
 var myPath string
@@ -173,15 +174,19 @@ func TestFindPos(t *testing.T) {
 	}
 }
 
+func TestInitAgain(t *testing.T) {
+	TestInit(t)
+}
+
 func Example() {
 
-	// Let's say we want to keep a collection of strings.
-	// Define a variable to be a placeholder for accessing
-	// collection's values
+	// Error handling purposely ignored
+	// in some places for didactic purposes.
+
+	// Let's say we want to keep a collection of strings
 	var myData string
 
 	// Create a collection for your data
-	os.RemoveAll("/tmp/my_data")
 	os.MkdirAll("/tmp/my_data", 0755)
 	k, err := keep.New(&myData, "/tmp/my_data")
 	if err != nil {
@@ -196,12 +201,12 @@ func Example() {
 	myData = "world"
 	k3, _ := k.Save()
 
-	// Update, remove
+	// Update, remove examples
 	myData = "hello"
 	k.SaveAs(k1)
-	k.Erase(k2)
 	myData = "folks"
 	k.SaveAs(k3)
+	k.Erase(k2)
 
 	// Loop though positions
 	pos, err := k.FindPos(1, true)
@@ -229,54 +234,63 @@ func Example() {
 
 func Example_embedding() {
 
-	// Let's say we want to keep a collection of strings.
-	type MyType struct {
-		V string
+	// Error handling purposely ignored
+	// in some places for didactic purposes.
+
+	// Let's say we want to keep a to-do list
+	type Task struct {
+		What     string
+		Due      int64
+		Finished bool
 	}
 
-	// Embedding allows accessing placeholder and
-	// manipulating the collection from the same variable.
-	var myData struct {
-		MyType
+	// Embed placeholder and collection as anonymous fields,
+	// so we access both from the same variable.
+	var task struct {
+		Task
 		keep.Keep
 	}
 
-	// Create a collection for your data
-	os.RemoveAll("/tmp/my_data")
-	os.MkdirAll("/tmp/my_data", 0755)
+	// Create a collection of task data
+	os.RemoveAll("/tmp/tasks")
+	os.MkdirAll("/tmp/tasks", 0755)
 	var err error
-	myData.Keep, err = keep.New(&myData.MyType, "/tmp/my_data")
+	task.Keep, err = keep.New(&task.Task, "/tmp/tasks")
 	if err != nil {
 		panic(err)
 	}
 
-	// Save values in new positions
-	myData.V = "goodbye"
-	k1, _ := myData.Save()
-	myData.V = "cruel"
-	k2, _ := myData.Save()
-	myData.V = "world"
-	k3, _ := myData.Save()
+	// Populate with samples
+	task.What = "dinner with family"
+	task.Due = time.Date(2016, time.October, 12, 18, 0, 0, 0, time.UTC).Unix()
+	task.Finished = true
+	taskID, _ := task.Save()
+	task.What = "have washing machine fixed"
+	task.Due = time.Date(2016, time.October, 13, 9, 0, 0, 0, time.UTC).Unix()
+	task.Finished = false
+	task.Save()
 
-	// Update, remove
-	myData.V = "hello"
-	myData.SaveAs(k1)
-	myData.Erase(k2)
-	myData.V = "folks"
-	myData.SaveAs(k3)
+	// Update example
+	task.Load(taskID)
+	task.Finished = true
+	task.SaveAs(taskID)
 
-	// Loop though positions
-	pos, err := myData.FindPos(1, true)
+	// Loop though filled positions
+	taskID, err = task.FindPos(1, true)
 	for err == nil {
 		// Retrieve value
-		myData.Load(pos)
-		fmt.Printf("position %v: %s\n", pos, myData.V)
-		if pos >= keep.MaxPos {
+		task.Load(taskID)
+		fmt.Printf("task %v: %s by %s", taskID, task.What, time.Unix(task.Due, 0).Format(time.Stamp))
+		if task.Finished {
+			fmt.Printf(" == DONE ==")
+		}
+		fmt.Printf("\n")
+		if taskID >= keep.MaxPos {
 			// Maximum position reached
 			break
 		}
 		// Find next filled position
-		pos, err = myData.FindPos(pos+1, true)
+		taskID, err = task.FindPos(taskID+1, true)
 	}
 	if err != nil && err != keep.PosNotFoundError {
 		// An abnormal error occurred
@@ -284,7 +298,7 @@ func Example_embedding() {
 	}
 
 	// Output:
-	// position 1: hello
-	// position 3: folks
+	// task 1: dinner with family by Oct 12 15:00:00 == DONE ==
+	// task 2: have washing machine fixed by Oct 13 06:00:00
 
 }
