@@ -30,8 +30,6 @@ func init() {
 	flag.StringVar(&myPath, "dir", "/tmp/my_data", "path to Keep collection")
 }
 
-var k keep.Keep
-
 func TestInit(t *testing.T) {
 	var err error
 	t.Logf("path to Keep collection = '%s'", myPath)
@@ -45,11 +43,18 @@ func TestInit(t *testing.T) {
 	}
 }
 
-var myData int64
+type MyType struct {
+	X int64
+}
+
+var myData struct {
+	MyType
+	keep.Keep
+}
 
 func TestNewEmpty(t *testing.T) {
 	var err error
-	k, err = keep.New(&myData, myPath)
+	myData.Keep, err = keep.New(&myData.MyType, myPath)
 	if err != nil {
 		t.Fatalf("keep.New failed: %s", err)
 	}
@@ -57,9 +62,21 @@ func TestNewEmpty(t *testing.T) {
 
 func TestNewNotEmpty(t *testing.T) {
 	var err error
-	k, err = keep.New(&myData, myPath)
+	myData.Keep, err = keep.New(&myData.MyType, myPath)
 	if err != nil {
 		t.Fatalf("keep.New failed: %s", err)
 	}
 }
 
+func TestSignature(t *testing.T) {
+	t.Logf("type signature: %s", myData.Signature())
+}
+
+func TestSaveAs(t *testing.T) {
+	var err error
+	myData.X= 8765
+	err = myData.SaveAs(1)
+	if err != nil {
+		t.Fatalf("keep.SaveAs failed: %s", err)
+	}
+}

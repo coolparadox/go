@@ -128,3 +128,21 @@ func New(placeholder interface{}, dir string) (Keep, error) {
 	}, nil
 }
 
+// Signature answers the type signature of the placeholder variable (see New).
+func (k Keep) Signature() string {
+	return k.encoder.Signature()
+}
+
+// SaveAs stores the contents of the placeholder variable (see New)
+// to a given position in the collection.
+// Position must be greater than zero.
+func (k Keep) SaveAs(pos uint32) error {
+	if pos == 0 {
+		return fmt.Errorf("position must be greater than zero")
+	}
+	_, err := k.db.SaveAs(pos, []io.Reader{k.encoder})
+	if err != nil {
+		return fmt.Errorf("cannot save: %s", err)
+	}
+	return nil
+}
