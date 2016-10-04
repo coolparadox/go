@@ -144,3 +144,30 @@ func TestErase(t *testing.T) {
 	}
 	TestExistsFalse(t)
 }
+
+func TestFindPos(t *testing.T) {
+	var err error
+	var pos uint32
+	myData.SaveAs(1000)
+	pos, err = myData.FindPos(1, true)
+	if err != nil {
+		t.Fatalf("FindPos failed: %s", err)
+	}
+	if pos != 1 {
+		t.Fatalf("FindPos mismatch: expected 1, received %v", pos)
+	}
+	pos, err = myData.FindPos(2, true)
+	if err != nil {
+		t.Fatalf("FindPos failed: %s", err)
+	}
+	if pos != 1000 {
+		t.Fatalf("FindPos mismatch: expected 1000, received %v", pos)
+	}
+	pos, err = myData.FindPos(1001, true)
+	if err == nil {
+		t.Fatalf("FindPos with no available positions returned no error")
+	}
+	if err != keep.PosNotFoundError {
+		t.Fatalf("FindPos error mismatch: expected PosNotFoundError, received %v", err)
+	}
+}

@@ -202,3 +202,26 @@ func (k Keep) Erase(pos uint32) error {
 	}
 	return k.db.Erase(pos)
 }
+
+// FindPos takes a position of the collection
+// and returns it if it's filled with data.
+// If it's not filled,
+// the closest filled position
+// in ascending (or descending) order
+// is returned instead.
+//
+// PosNotFoundError is returned
+// if there is no position to be answered.
+func (k Keep) FindPos(pos uint32, ascending bool) (uint32, error) {
+	pos, err := k.db.FindKey(pos, ascending)
+	if err != nil {
+		if err == lazydb.KeyNotFoundError {
+			return pos, PosNotFoundError
+		}
+		return pos, err
+	}
+	if pos == 0 {
+		return pos, PosNotFoundError
+	}
+	return pos, nil
+}
