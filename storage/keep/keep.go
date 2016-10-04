@@ -156,7 +156,7 @@ func (k Keep) Load(pos uint32) error {
 	}
 	ok, err := k.db.Exists(pos, 0)
 	if err != nil {
-		return fmt.Errorf("cannot check position %v for existence: %s", pos, err)
+		return err
 	}
 	if !ok {
 		return fmt.Errorf("position %v does not exist", pos)
@@ -166,4 +166,13 @@ func (k Keep) Load(pos uint32) error {
 		return fmt.Errorf("cannot load position %v: %s", pos, err)
 	}
 	return nil
+}
+
+// Exists verifies if a position of the collection is filled with data.
+func (k Keep) Exists(pos uint32) (bool, error) {
+	ok, err := k.db.Exists(pos, 0)
+	if err != nil {
+		return false, fmt.Errorf("cannot check position %v for existence: %s", pos, err)
+	}
+	return ok, nil
 }

@@ -92,3 +92,25 @@ func TestLoad(t *testing.T) {
 		t.Fatalf("Load mismatch: expected 8765, received %s", myData.X)
 	}
 }
+
+func TestExistsFalse(t *testing.T) {
+	var err error
+	ok, err := myData.Exists(2)
+	if err != nil {
+		t.Fatalf("Exists failed: %s", err)
+	}
+	if ok {
+		t.Fatalf("Exists result mismatch for position 2: expected false, received true")
+	}
+}
+
+func TestExistsTrue(t *testing.T) {
+	var err error
+	ok, err := myData.Exists(1)
+	if err != nil {
+		t.Fatalf("Exists failed: %s", err)
+	}
+	if !ok {
+		t.Fatalf("Exists result mismatch for position 1: expected true, received false")
+	}
+}
