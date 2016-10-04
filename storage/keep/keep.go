@@ -176,3 +176,17 @@ func (k Keep) Exists(pos uint32) (bool, error) {
 	}
 	return ok, nil
 }
+
+// Save stores the contents of the placeholder variable (see New)
+// to a new position of the collection.
+// The position is automatically assigned
+// and guaranteed to be previously free of data.
+//
+// Returns the assigned position.
+func (k Keep) Save() (uint32, error) {
+	pos, _, err := k.db.Save([]io.Reader{k.encoder})
+	if err != nil {
+		return 0, fmt.Errorf("cannot save: %s", err)
+	}
+	return pos, nil
+}

@@ -114,3 +114,23 @@ func TestExistsTrue(t *testing.T) {
 		t.Fatalf("Exists result mismatch for position 1: expected true, received false")
 	}
 }
+
+func TestSave(t *testing.T) {
+	var err error
+	myData.X = 10234
+	pos, err := myData.Save()
+	if err != nil {
+		t.Fatalf("keep.Save failed: %s", err)
+	}
+	if pos != 2 {
+		t.Fatalf("keep.Save position mismatch: expected 2, received %v", pos)
+	}
+	myData.X = 0
+	myData.Load(pos)
+	if err != nil {
+		t.Fatalf("keep.Load failed: %s", err)
+	}
+	if myData.X != 10234 {
+		t.Fatalf("Load mismatch: expected 10234, received %s", myData.X)
+	}
+}
