@@ -71,7 +71,20 @@ func TestNewNotEmpty(t *testing.T) {
 }
 
 func TestSignature(t *testing.T) {
-	t.Logf("type signature: %s", myData.Signature())
+	signature := myData.Signature()
+	if signature != "struct { int64 }" {
+		t.Fatalf("signature mismatch: expected 'struct { int64 }', received '%s'", signature)
+	}
+	t.Logf("type signature: %s", signature)
+}
+
+func TestNewOtherSignature(t *testing.T) {
+	var err error
+	var otherData []complex128
+	_, err = keep.New(&otherData, myPath)
+	if err == nil {
+		t.Fatalf("keep.New suceeded in opening database with wrong type signature")
+	}
 }
 
 func TestSaveAs(t *testing.T) {
