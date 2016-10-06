@@ -26,28 +26,19 @@ you want to store,
 and use New to bind a Keep collection to it:
 
 	var myData string
-	k, err := keep.New(&myData, "/paty/to/my/collection")
-	if err != nil {
-	    panic(err)
-	}
+	k, _ := keep.New(&myData, "/paty/to/my/collection")
 
 For storing values to the collection,
 update the placeholder variable
 and call Save or SaveAs:
 
 	myData = "keep coding"
-	pos, err := k.Save()
-	if err != nil {
-	    panic(err)
-	}
+	pos, _ := k.Save()
 
 For retrieving values from the collection,
 use Load and read the placeholder variable:
 
-	err = k.Load(pos)
-	if err != nil {
-	    panic(err)
-	}
+	k.Load(pos)
 	fmt.Println(myData)
 
 Suported Types
@@ -115,10 +106,7 @@ together with Keep:
 	    keep.Keep
 	}
 
-	myData.Keep, err = keep.New(&myData.MyType, "/path/to/collection")
-	if err != nil {
-	    panic(err)
-	}
+	myData.Keep, _ = keep.New(&myData.MyType, "/path/to/collection")
 
 This way
 struct fields and Keep methods
@@ -126,10 +114,7 @@ are accessible from the same entity:
 
 	myData.Name = "Agent Smith"
 	myData.Age = 101
-	_, err = myData.Save()
-	if err != nil {
-	    panic(err)
-	}
+	myData.Save()
 
 Concurrent Access
 
