@@ -260,6 +260,9 @@ func (k Keep) Load(pos uint32) error {
 
 // Exists verifies if a position of the collection is filled.
 func (k Keep) Exists(pos uint32) (bool, error) {
+	if pos == 0 {
+		return false, fmt.Errorf("position must be greater than zero")
+	}
 	ok, err := k.db.Exists(pos, 0)
 	if err != nil {
 		return false, fmt.Errorf("cannot check position %v for existence: %s", pos, err)
@@ -283,6 +286,9 @@ func (k Keep) Save() (uint32, error) {
 
 // Erase erases data of a given position in the collection.
 func (k Keep) Erase(pos uint32) error {
+	if pos == 0 {
+		return fmt.Errorf("position must be greater than zero")
+	}
 	ok, err := k.Exists(pos)
 	if err != nil {
 		return err
@@ -303,6 +309,9 @@ func (k Keep) Erase(pos uint32) error {
 // PosNotFoundError is returned
 // if there is no position to be answered.
 func (k Keep) FindPos(pos uint32, ascending bool) (uint32, error) {
+	if pos == 0 {
+		return 0, fmt.Errorf("position must be greater than zero")
+	}
 	pos, err := k.db.FindKey(pos, ascending)
 	if err != nil {
 		if err == lazydb.KeyNotFoundError {
@@ -311,6 +320,7 @@ func (k Keep) FindPos(pos uint32, ascending bool) (uint32, error) {
 		return pos, err
 	}
 	if pos == 0 {
+		// LazyDB may have returned key 0
 		return pos, PosNotFoundError
 	}
 	return pos, nil
