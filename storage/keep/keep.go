@@ -26,7 +26,7 @@ you want to store,
 and use New to bind a Keep collection to it:
 
 	var myData string
-	k, _ := keep.New(&myData, "/paty/to/my/collection")
+	k, _ := keep.New(&myData, "/path/to/my/collection")
 
 For storing values to the collection,
 update the placeholder variable
