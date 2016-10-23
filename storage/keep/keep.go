@@ -26,28 +26,19 @@ you want to store,
 and use New to bind a Keep collection to it:
 
 	var myData string
-	k, err := keep.New(&myData, "/paty/to/my/collection")
-	if err != nil {
-	    panic(err)
-	}
+	k, _ := keep.New(&myData, "/path/to/my/collection")
 
 For storing values to the collection,
 update the placeholder variable
 and call Save or SaveAs:
 
 	myData = "keep coding"
-	pos, err := k.Save()
-	if err != nil {
-	    panic(err)
-	}
+	pos, _ := k.Save()
 
 For retrieving values from the collection,
 use Load and read the placeholder variable:
 
-	err = k.Load(pos)
-	if err != nil {
-	    panic(err)
-	}
+	k.Load(pos)
 	fmt.Println(myData)
 
 Suported Types
@@ -115,10 +106,7 @@ together with Keep:
 	    keep.Keep
 	}
 
-	myData.Keep, err = keep.New(&myData.MyType, "/path/to/collection")
-	if err != nil {
-	    panic(err)
-	}
+	myData.Keep, _ = keep.New(&myData.MyType, "/path/to/collection")
 
 This way
 struct fields and Keep methods
@@ -126,10 +114,7 @@ are accessible from the same entity:
 
 	myData.Name = "Agent Smith"
 	myData.Age = 101
-	_, err = myData.Save()
-	if err != nil {
-	    panic(err)
-	}
+	myData.Save()
 
 Concurrent Access
 
@@ -275,6 +260,9 @@ func (k Keep) Load(pos uint32) error {
 
 // Exists verifies if a position of the collection is filled.
 func (k Keep) Exists(pos uint32) (bool, error) {
+	if pos == 0 {
+		return false, fmt.Errorf("position must be greater than zero")
+	}
 	ok, err := k.db.Exists(pos, 0)
 	if err != nil {
 		return false, fmt.Errorf("cannot check position %v for existence: %s", pos, err)
@@ -298,6 +286,9 @@ func (k Keep) Save() (uint32, error) {
 
 // Erase erases data of a given position in the collection.
 func (k Keep) Erase(pos uint32) error {
+	if pos == 0 {
+		return fmt.Errorf("position must be greater than zero")
+	}
 	ok, err := k.Exists(pos)
 	if err != nil {
 		return err
@@ -318,6 +309,9 @@ func (k Keep) Erase(pos uint32) error {
 // PosNotFoundError is returned
 // if there is no position to be answered.
 func (k Keep) FindPos(pos uint32, ascending bool) (uint32, error) {
+	if pos == 0 {
+		return 0, fmt.Errorf("position must be greater than zero")
+	}
 	pos, err := k.db.FindKey(pos, ascending)
 	if err != nil {
 		if err == lazydb.KeyNotFoundError {
@@ -326,6 +320,7 @@ func (k Keep) FindPos(pos uint32, ascending bool) (uint32, error) {
 		return pos, err
 	}
 	if pos == 0 {
+		// LazyDB may have returned key 0
 		return pos, PosNotFoundError
 	}
 	return pos, nil
